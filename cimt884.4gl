@@ -4,11 +4,14 @@ MAIN
     DEFINE v_date LIKE aaa_file.aaa06
     DEFINE company STRING 
     DEFINE i,j,k char(20)
-
+    DEFINE salary INTEGER
+    
+    
     LET i = "TIPTOP GP"
     LET j = "Genero BDL123456"
     LET company = "DC","MS"
     LET k = j[1,6]
+    LET salary = 1000 USING "$##,###"
     SELECT aaa06
         INTO v_date
         FROM aaa_file
@@ -21,6 +24,7 @@ MAIN
     DISPLAY "i||k:",i||k
     DISPLAY "i,k:",i,k
     DISPLAY "k:",k
+    DISPLAY "薪水:",salary
     
 END MAIN
 
