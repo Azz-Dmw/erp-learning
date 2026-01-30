@@ -8,6 +8,7 @@ MAIN
     LET i = "TIPTOP GP"
     LET j = "Genero BDL123456"
     LET company = "DC","MS"
+    LET k = j[1,6]
     SELECT aaa06
         INTO v_date
         FROM aaa_file
@@ -19,7 +20,7 @@ MAIN
     DISPLAY "i||j:",i||j
     DISPLAY "i||k:",i||k
     DISPLAY "i,k:",i,k
-    DISPLAY "这是我的修改"
+    DISPLAY "k:",k
     
 END MAIN
 
