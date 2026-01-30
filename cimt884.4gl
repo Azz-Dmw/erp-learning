@@ -11,7 +11,7 @@ MAIN
     LET j = "Genero BDL123456"
     LET company = "DC","MS"
     LET k = j[1,6]
-    LET salary = 1000 USING "$##,###"
+    LET salary = 1000 
     SELECT aaa06
         INTO v_date
         FROM aaa_file
@@ -24,7 +24,7 @@ MAIN
     DISPLAY "i||k:",i||k
     DISPLAY "i,k:",i,k
     DISPLAY "k:",k
-    DISPLAY "薪水:",salary
+    DISPLAY "薪水：",salary USING "$#,###"
     
 END MAIN
 
