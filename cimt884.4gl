@@ -5,6 +5,7 @@ MAIN
     DEFINE company STRING 
     DEFINE i,j,k char(20)
     DEFINE salary,salary1,salary2 INTEGER
+    DEFINE g char(20)
     
     
     LET i = "TIPTOP GP"
@@ -14,6 +15,7 @@ MAIN
     LET salary = 1000 
     LET salary1 = -1000 
     LET salary2 = 1000 
+    LET g = "TIPTOP GP                "
     SELECT aaa06
         INTO v_date
         FROM aaa_file
@@ -30,6 +32,7 @@ MAIN
     DISPLAY salary1 USING "--,---"
     DISPLAY salary2 USING "++,+++"
     DISPLAY "日期：",TODAY USING "yyyy-mm-dd"
+    DISPLAY "变量g和j拼接并且消除空白:",g CLIPPED,j
     
 END MAIN
 
