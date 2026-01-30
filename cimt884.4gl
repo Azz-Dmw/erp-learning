@@ -1,23 +1,24 @@
 DATABASE ds
 
 GLOBALS
-    DEFINE g_employee char(20) --GLOBAL 变数
+    DEFINE g_employee char(20) --GLOBAL 变数 全局变量
     --为所 link 使用的 MODULE 的共享变量
 END GLOBALS 
-    DEFINE g_employee char(10)
-    DEFINE g_tty char(32)--MODULE 变数
+
+    --DEFINE g_employee char(10)
+    DEFINE g_tty char(32)--MODULE 变数 整个模块都能用
 
 MAIN
     DEFINE v_date LIKE aaa_file.aaa06
     DEFINE company STRING 
-    DEFINE i,j,k char(20)
+    DEFINE i,j,k char(20) --局部变量
     DEFINE salary,salary1,salary2 INTEGER
     DEFINE g char(20)
     DEFINE f STRING 
     DEFINE h char(20)
-    DEFINE answer CHAR(1) --LOCAL变数
+    DEFINE answer CHAR(1) --LOCAL变数局部变量
     
-    LET i = "TIPTOP GP"
+    LET i = "TIPTOP GP"  
     LET j = "Genero BDL123456"
     LET company = "DC","MS"
     LET k = j[1,6]
@@ -27,7 +28,9 @@ MAIN
     LET g = "TIPTOP GP                "
     LET f = "      TIPTOP GP          "
     LET h = "Genero BDL"
+    LET g_tty = 'tiptop'
     LET g_employee = "ERP"
+
     SELECT aaa06
         INTO v_date
         FROM aaa_file
@@ -47,13 +50,23 @@ MAIN
     DISPLAY "变量g和j拼接并且消除空白:",g CLIPPED,j
     DISPLAY "变量f和h拼接=",f.trim(),h,"123"
     DISPLAY "变量i和j拼接=",i,8 SPACES,g CLIPPED  
-    DISPLAY "系统:",g_employee
+    DISPLAY "输出1:",g_tty
+    DISPLAY "输出1:",g_employee
+
+    CALL ins_employee()
     
 END MAIN
 
 FUNCTION ins_employee()
-    DEFINE flag char(1), --LOCAL变数
-    change SMALLINT --LOCAL变数
+    DEFINE g_tty1 SMALLINT --LOCAL变数 局部变量
+    DEFINE g_employee1 SMALLINT --LOCAL变数
+
+    LET g_tty1 = 32
+    LET g_employee1 = 10
+
+    DISPLAY "输出2:",g_tty1
+    DISPLAY "输出2:",g_employee1
+    
 END FUNCTION 
 
 
