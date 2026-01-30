@@ -4,7 +4,7 @@ MAIN
     DEFINE v_date LIKE aaa_file.aaa06
     DEFINE company STRING 
     DEFINE i,j,k char(20)
-    DEFINE salary INTEGER
+    DEFINE salary,salary1,salary2 INTEGER
     
     
     LET i = "TIPTOP GP"
@@ -12,6 +12,8 @@ MAIN
     LET company = "DC","MS"
     LET k = j[1,6]
     LET salary = 1000 
+    LET salary1 = -1000 
+    LET salary2 = 1000 
     SELECT aaa06
         INTO v_date
         FROM aaa_file
@@ -25,6 +27,9 @@ MAIN
     DISPLAY "i,k:",i,k
     DISPLAY "k:",k
     DISPLAY "薪水：",salary USING "$#,###"
+    DISPLAY salary1 USING "--,---"
+    DISPLAY salary2 USING "++,+++"
+    DISPLAY "日期：",TODAY USING "yyyy-mm-dd"
     
 END MAIN
 
