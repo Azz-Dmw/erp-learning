@@ -6,7 +6,8 @@ MAIN
     DEFINE i,j,k char(20)
     DEFINE salary,salary1,salary2 INTEGER
     DEFINE g char(20)
-    
+    DEFINE f STRING 
+    DEFINE h char(20)
     
     LET i = "TIPTOP GP"
     LET j = "Genero BDL123456"
@@ -16,6 +17,8 @@ MAIN
     LET salary1 = -1000 
     LET salary2 = 1000 
     LET g = "TIPTOP GP                "
+    LET f = "      TIPTOP GP          "
+    LET h = "Genero BDL"
     SELECT aaa06
         INTO v_date
         FROM aaa_file
@@ -33,6 +36,7 @@ MAIN
     DISPLAY salary2 USING "++,+++"
     DISPLAY "日期：",TODAY USING "yyyy-mm-dd"
     DISPLAY "变量g和j拼接并且消除空白:",g CLIPPED,j
+    DISPLAY "变量f和h拼接=",f.trim(),h,"123"
     
 END MAIN
 
