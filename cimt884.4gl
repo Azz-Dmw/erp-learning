@@ -1,5 +1,12 @@
 DATABASE ds
 
+GLOBALS
+    DEFINE g_employee char(20) --GLOBAL 变数
+    --为所 link 使用的 MODULE 的共享变量
+END GLOBALS 
+    DEFINE g_employee char(10)
+    DEFINE g_tty char(32)--MODULE 变数
+
 MAIN
     DEFINE v_date LIKE aaa_file.aaa06
     DEFINE company STRING 
@@ -8,6 +15,7 @@ MAIN
     DEFINE g char(20)
     DEFINE f STRING 
     DEFINE h char(20)
+    DEFINE answer CHAR(1) --LOCAL变数
     
     LET i = "TIPTOP GP"
     LET j = "Genero BDL123456"
@@ -19,6 +27,7 @@ MAIN
     LET g = "TIPTOP GP                "
     LET f = "      TIPTOP GP          "
     LET h = "Genero BDL"
+    LET g_employee = "ERP"
     SELECT aaa06
         INTO v_date
         FROM aaa_file
@@ -37,16 +46,19 @@ MAIN
     DISPLAY "日期：",TODAY USING "yyyy-mm-dd"
     DISPLAY "变量g和j拼接并且消除空白:",g CLIPPED,j
     DISPLAY "变量f和h拼接=",f.trim(),h,"123"
+    DISPLAY "变量i和j拼接=",i,8 SPACES,g CLIPPED  
+    DISPLAY "系统:",g_employee
     
 END MAIN
 
+FUNCTION ins_employee()
+    DEFINE flag char(1), --LOCAL变数
+    change SMALLINT --LOCAL变数
+END FUNCTION 
 
 
---数据库连接成功，读取到：09/12/10
---company:DCMS
---i||jTIPTOP GP           Genero BDL123456    
---i||k
---i,k:TIPTOP GP 
+
+
 
 
 
