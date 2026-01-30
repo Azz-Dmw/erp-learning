@@ -1,0 +1,7 @@
+--DATABASE ds
+
+MAIN
+    DEFINE i INTEGER
+    LET i = 1
+    DISPLAY i
+END MAIN

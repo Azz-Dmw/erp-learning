@@ -19,6 +19,7 @@ MAIN
     DISPLAY "i||j:",i||j
     DISPLAY "i||k:",i||k
     DISPLAY "i,k:",i,k
+    DISPLAY "这是我的修改"
     
 END MAIN
 
@@ -29,6 +30,7 @@ END MAIN
 --i||jTIPTOP GP           Genero BDL123456    
 --i||k
 --i,k:TIPTOP GP 
+
 
 
 
