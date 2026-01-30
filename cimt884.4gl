@@ -16,11 +16,19 @@ MAIN
 
     DISPLAY "数据库连接成功，读取到：", v_date
     DISPLAY "company:",company
-    DISPLAY "i||j",i||j
-    DISPLAY "i||k",i||k
+    DISPLAY "i||j:",i||j
+    DISPLAY "i||k:",i||k
     DISPLAY "i,k:",i,k
     
 END MAIN
+
+
+
+--数据库连接成功，读取到：09/12/10
+--company:DCMS
+--i||jTIPTOP GP           Genero BDL123456    
+--i||k
+--i,k:TIPTOP GP 
 
 
 
