@@ -55,9 +55,49 @@ MAIN
 
     CALL ins_employee()
 
-    DISPLAY "请等待5秒！"
-    SLEEP 5 --延迟5秒
+    DISPLAY "请等待3秒！"
+    SLEEP 3 --延迟3秒
     DISPLAY "谢谢！"
+
+    --IF判断语句
+    IF i MATCHES "TIPTOP" THEN --判断1
+        DISPLAY "The first name TIPTOP displayed."--输出
+        IF i MATCHES "GP" THEN --判断2
+            DISPLAY "Even the last name TIPTOP displayed."--输出
+        END IF --结束判断2
+    ELSE --其他情况
+        DISPLAY "The name is " , i , "."--输出
+    END IF --结束判断1
+
+    CASE salary1 
+        WHEN -1000 
+            DISPLAY "薪资小于0!"
+        WHEN 1000
+            DISPLAY "薪资大于0!"
+        OTHERWISE 
+            DISPLAY "薪资未知!"
+    END CASE 
+
+    IF salary2 = -1000 OR salary2 = 1000 OR salary2 = 0 THEN
+        IF salary2 = -1000 THEN 
+            DISPLAY "薪资小于0!"
+        END IF
+        IF salary2 = 1000 THEN 
+            DISPLAY "薪资大于0!"
+        END IF 
+        
+    ELSE 
+        DISPLAY "薪资未知!"
+    END IF
+
+    CASE WHEN (salary2 = 1000 OR salary1 = 1000)
+            DISPLAY "Value is either salary1 or salary2"
+         WHEN  (salary = 1000 OR salary1 = 1000)
+            DISPLAY "Value is either salary or salary1"
+        OTHERWISE 
+            DISPLAY "Unexpected value"
+    END CASE 
+
     
 END MAIN
 
