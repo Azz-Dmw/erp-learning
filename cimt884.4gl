@@ -54,6 +54,10 @@ MAIN
     DISPLAY "输出1:",g_employee
 
     CALL ins_employee()
+
+    DISPLAY "请等待5秒！"
+    SLEEP 5 --延迟5秒
+    DISPLAY "谢谢！"
     
 END MAIN
 
