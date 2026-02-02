@@ -17,6 +17,8 @@ MAIN
     DEFINE f STRING 
     DEFINE h char(20)
     DEFINE answer CHAR(1) --LOCAL变数局部变量
+    DEFINE l,i_max,i_min INTEGER --定义最大值和最小值
+    DEFINE m INTEGER 
     
     LET i = "TIPTOP GP"  
     LET j = "Genero BDL123456"
@@ -30,6 +32,9 @@ MAIN
     LET h = "Genero BDL"
     LET g_tty = 'tiptop'
     LET g_employee = "ERP"
+    LET i_max = 10
+    LET i_min = 1
+    LET m = 0
 
     SELECT aaa06
         INTO v_date
@@ -90,6 +95,7 @@ MAIN
         DISPLAY "薪资未知!"
     END IF
 
+    
     CASE WHEN (salary2 = 1000 OR salary1 = 1000)
             DISPLAY "Value is either salary1 or salary2"
          WHEN  (salary = 1000 OR salary1 = 1000)
@@ -98,6 +104,45 @@ MAIN
             DISPLAY "Unexpected value"
     END CASE 
 
+    DISPLAY "从小到大输出"
+    FOR l = i_min TO i_max
+    DISPLAY l
+    END FOR 
+
+    DISPLAY "从大到小输出"
+    FOR l = i_max TO i_min STEP-1
+    DISPLAY l
+    END FOR 
+
+    WHILE i_max > i_min
+        DISPLAY i_max,">",i_min
+        LET i_min = i_min + 1
+    END WHILE 
+    
+    DISPLAY "--------------------------"
+    FOR l=1 TO i_max -1 --STEP -1
+        DISPLAY i_max,">",l
+    END FOR 
+
+    WHILE m < 5
+        LET m = m + 1
+        DISPLAY "m=" || m
+        CONTINUE WHILE 
+        DISPLAY "这一行永远不显示" 
+    END WHILE 
+        DISPLAY "--------------------------"
+        DISPLAY "m1=",m 
+        DISPLAY "--------------------------"
+        
+    WHILE TRUE 
+        LET m = m + 1
+        DISPLAY "m2=",m 
+        IF m = 10 THEN 
+            EXIT WHILE 
+        END IF
+    END WHILE 
+    DISPLAY "--------------------------"
+    DISPLAY "m3=",m 
     
 END MAIN
 
