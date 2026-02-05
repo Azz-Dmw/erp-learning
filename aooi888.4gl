@@ -115,8 +115,8 @@ FUNCTION i010_menu()
 
         --新增功能按钮
         ON ACTION INSERT
-            CALL i010_input()   --调用新增功能函数
-            MESSAGE "insert (empty)"
+            CALL i010_insert()   --调用新增功能函数
+            --MESSAGE "insert (empty)"
 
         --查新功能按钮
         ON ACTION query
@@ -155,7 +155,7 @@ END FUNCTION
 FUNCTION i010_show()
 
     --模拟一笔查询到的资料
-    LET g_azb.azb01 = "TEST001"
+    --LET g_azb.azb01 = "0000"
     LET g_azb.azboriu = "测试人员"
     LET g_azb.AZBDATE = TODAY 
 
@@ -165,18 +165,30 @@ FUNCTION i010_show()
 END FUNCTION 
 
 
-FUNCTION i010_input()   --新增功能函数
+FUNCTION i010_insert()   --新增功能函数
+
+    INITIALIZE g_azb.* TO NULL 
 
     CLEAR FORM --清画面,变量还在，直接画面清理了
                 --清变量，INITIALIZE g_azb.* TO NULL，画面不会自动清除，注意区别和用法
     
     INPUT BY NAME g_azb.*   --输入值 → 自动进 g_azb
         BEFORE INPUT 
-        MESSAGE "开始输入"
+        MESSAGE "请输入新增资料"
 
-        AFTER INPUT 
-        MESSAGE "输入完成"
-    END INPUT 
+
+        --AFTER INPUT 
+        --MESSAGE "输入完成"
+    END INPUT
+
+   IF NOT i010_chk_insert() THEN 
+        RETURN 
+    END IF 
+
+    MESSAGE "新增成功（假成功）"
+
+    --显示结果（假装新增成功）
+    CALL i010_show()
     
 END FUNCTION 
 
@@ -197,6 +209,32 @@ FUNCTION i010_fetch(p_mode)
     CALL i010_show()
     
 END FUNCTION 
+
+--检查主键唯一并且不能为空
+FUNCTION i010_chk_insert()
+
+    DEFINE l_cnt LIKE type_file.num10
+
+    --主键不能为空
+    IF g_azb.azb01 IS NULL OR g_azb.azb01 = "" THEN 
+        MESSAGE "主键不可为空，请输入签核人员编号！"
+        RETURN FALSE 
+    END IF 
+
+    --检查主键是否存在
+    SELECT COUNT(*) INTO l_cnt FROM azb_file
+    WHERE azb01 = g_azb.azb01
+
+    IF l_cnt > 0 THEN 
+        MESSAGE "编号 [" || g_azb.azb01 || "] 已存在，无法新增"
+        RETURN FALSE
+    END IF 
+
+    --检查通过
+    RETURN TRUE 
+
+END FUNCTION
+
 
 
 
