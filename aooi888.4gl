@@ -102,21 +102,29 @@ FUNCTION i010_menu()
         BEFORE MENU
             CALL cl_navigator_setting(g_curs_index, g_row_count)
 
-        ON ACTION insert
+        --新增功能按钮
+        ON ACTION INSERT
+            CALL i010_input()   --调用新增功能函数
             MESSAGE "insert (empty)"
 
+        --查新功能按钮
         ON ACTION query
-            MESSAGE "query (empty)"
+             CALL i010_show()   ----调用查询功能函数
+             MESSAGE "query (empty)"
 
+        --修改功能按钮
         ON ACTION modify
             MESSAGE "modify (empty)"
 
+        --删除功能按钮
         ON ACTION delete
             MESSAGE "delete (empty)"
 
+        --说明功能按钮
         ON ACTION help
-            CALL cl_show_help()
+            CALL cl_show_help()     ------调用说明功能函数
 
+        --退出功能按钮
         ON ACTION exit
             EXIT MENU
 
@@ -124,123 +132,38 @@ FUNCTION i010_menu()
             CALL cl_on_idle()
             CONTINUE MENU
 
+
     END MENU
 
 END FUNCTION
 
 
+FUNCTION i010_show()
 
-
-
-
-
-{
-FUNCTION i010_menu()
-
-    DEFINE l_cmd LIKE type_file.chr1000
-
-    MENU ""
-        BEFORE MENU  --预设第一笔、上笔、指定笔、下笔、末一笔五个功能关闭
-            CALL cl_navigator_setting(g_curs_index,g_row_count)
-
-        ON ACTION INSERT
-            LET g_action_choice = "insert"
-            IF cl_chk_act_auth() THEN 
-                CALL i010_a()
-            END IF 
-
-        ON ACTION query
-            LET g_action_choice = "query"
-            IF cl_chk_act_auth() THEN 
-                CALL i010_q()
-            END IF 
-
-        ON ACTION modify
-            LET g_action_choice = "modify"
-            IF cl_chk_act_auth() THEN 
-                CALL i010_u()
-            END IF 
-
-        ON ACTION invalid
-            LET g_action_choice = "invalid"
-            IF cl_chk_act_auth() THEN 
-                CALL i010_x()
-            END IF 
-
-        ON ACTION DELETE
-            LET g_action_choice = "delete"
-            IF cl_chk_act_auth() THEN 
-                CALL i010_r()
-            END IF 
-
-        ON ACTION reproduce
-            LET g_action_choice = "reproduce"
-            IF cl_chk_act_auth() THEN 
-                CALL i010_copy()
-            END IF 
-
-        ON ACTION output
-            LET g_action_choice = "output"
-            IF cl_chk_act_auth() THEN 
-                CALL i010_out()
-            END IF 
-
-        ON ACTION first
-            CALL i010_fetch('F')
-
-        ON ACTION previous
-            CALL i010_fetch('P')
-
-        ON ACTION jump
-            CALL i010_fetch('/')
-
-        ON ACTION NEXT
-            CALL i010_fetch('n')
-
-        ON ACTION LAST
-            CALL i010_fetch('L')
-
-        ON ACTION HELP
-            CALL cl_show_help()
-
-        ON ACTION EXIT
-            LET g_action_choice = "exit"
-            EXIT MENU 
-
-        ON ACTION controlg
-            CALL cl_cmdask
-
-        ON ACTION locale
-            CALL cl_dynamic_locale()
-            CALL cl_show_fld_cont()
-
-        ON IDLE g_idle_seconds
-            CALL cl_on_idle()
-            CONTINUE MENU 
-
-        ON ACTION about
-            CALL cl_about()
-
-        COMMAND KEY (INTERRUPT)
-            LET INT_FLAG = FALSE
-            LET g_action_choice = "exit"
-            EXIT MENU 
-        END COMMAND 
-
-        ON ACTION related_document
-            LET g_action_choice = "related_document"
-            IF cl_chk_act_auth() THEN 
-                IF g_azb.azb01 IS NOT NULL THEN 
-                    LET g_doc.value1 = g_azb.azb01
-                    CALL cl_doc()
-                END IF 
-            END IF 
-
-    END MENU 
+    DISPLAY g_azb.* 
     
-            --CLOSE i010_cs
+END FUNCTION 
 
 
-END FUNCTION
-}
+FUNCTION i010_input()   --新增功能函数
+
+    CLEAR FORM --清画面,变量还在，直接画面清理了
+                --清变量，INITIALIZE g_azb.* TO NULL，画面不会自动清除，注意区别和用法
+    
+    INPUT BY NAME g_azb.*
+        BEFORE INPUT 
+        MESSAGE "开始输入"
+
+        AFTER INPUT 
+        MESSAGE "输入完成"
+    END INPUT 
+    
+END FUNCTION 
+
+
+
+
+
+
+
 
