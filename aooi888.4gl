@@ -109,7 +109,7 @@ FUNCTION i010_menu()
     MENU ""
 
     --各功能按钮
-        BEFORE MENU
+        BEFORE MENU     --预设第一笔、上笔、指定笔、下笔、末一笔五个功能关闭
             CALL cl_navigator_setting(g_curs_index, g_row_count)
 
         --新增功能按钮
@@ -117,13 +117,18 @@ FUNCTION i010_menu()
             CALL i888_insert()   --调用新增功能函数
             
             --MESSAGE "insert (empty)"
-            {新增流程
-            MENU → i888_insert()
-                    ├─ INITIALIZE   --初始化变量
-                    ├─ CLEAR FORM   --清画面
-                    ├─ INPUT BY NAME g_azb.*    --输入值
-                    ├─ i010_chk_insert()        --检查输入值是否合法
-                    └─ MESSAGE 成功               --提示成功
+            {  菜单 INSERT
+                  ↓
+                i888_insert()
+                  ├─ 清变量 / 清画面
+                  ├─ INPUT BY NAME 输入
+                  ├─ 主键即时检查（AFTER FIELD azb01）
+                  ├─ 整体检查（i888_chk_insert）
+                  ├─ 确认
+                  ├─ INSERT INTO azb_file (...)
+                  ├─ COMMIT
+                  └─ 重新显示画面
+
              }
 
         --查新功能按钮
@@ -163,7 +168,7 @@ END FUNCTION
 
 
 --新增功能函数
-FUNCTION i888_insert() 
+FUNCTION i888_insert()  
 
     DEFINE l_ok LIKE type_file.num5
 
@@ -177,34 +182,27 @@ FUNCTION i888_insert()
     --INITIALIZE：清变量，INITIALIZE g_azb.* TO NULL，画面不会自动清除。
     --CLEAR FORM：清画面,变量还在，只是画面清理了
 
-
-    --一次性输入全部栏位
+    --输入资料
     INPUT BY NAME g_azb.*
         BEFORE INPUT 
-            MESSAGE "请输入新增资料"
-
-        --主键检查
-        AFTER FIELD azb01
-            IF NOT i888_chk_pk() THEN 
-                NEXT FIELD azb01
-            END IF 
-
-        {AFTER INPUT 
-            IF NOT i888_chk_pk() THEN 
-                MESSAGE "主键资料不合法，请重新出入"
-                NEXT FIELD azb01
-            END IF 
-        }
+            MESSAGE "请输入新增资料" 
     END INPUT 
-    
 
-    --整体检查
-    IF NOT i888_chk_insert() THEN 
-        MESSAGE "主键字段非法，新增取消"
+
+    --主键检查
+    IF NOT i888_chk_pk() THEN 
+        MESSAGE "主键检查失败，新增取消！"
         RETURN 
     END IF 
 
-    --确认是否新增
+    --整体资料检查
+    IF NOT i888_chk_insert() THEN 
+        MESSAGE "资料检查失败，新增取消"
+        RETURN
+    END IF 
+
+
+    --确认
     LET l_ok = cl_confirm("是否确认新增此笔资料？")
 
     IF l_ok <> 1 THEN 
@@ -212,36 +210,65 @@ FUNCTION i888_insert()
         RETURN 
     END IF 
 
-    --假装新增成功
-    MESSAGE "新增成功（未写入数据库）"
+    -- === 正式新增到数据库 ===
+    --主键重复、NOT NULL 违反、触发器错误
+    --全局错误处理模式
+    --WHENEVER ERROR CALL cl_err_msg_log 
 
-    CALL i888_show()
+    --插入数据库
+    --INSERT INTO azb_file VALUES (g_azb.*)
+    INSERT INTO azb_file (
+    azb01,
+    azboriu,
+    azbdate
+    )
+    VALUES (
+        TRIM(g_azb.azb01),
+        TRIM(g_azb.azboriu),
+        TRIM(g_azb.azbdate)
+    )
+
+
+    --关闭全局错误处理模式
+    --WHENEVER ERROR STOP 
+
+    IF SQLCA.SQLCODE <> 0 THEN
+        MESSAGE "新增失败，SQLCODE = " || SQLCA.SQLCODE
+        ROLLBACK WORK 
+        RETURN  
+    END IF
+
+    COMMIT WORK 
+    MESSAGE "新增成功"
+
+    --显示新增后的资料
+    CALL i888_show() 
     
     
 END FUNCTION 
 
 
 --检查主键是否合法
-FUNCTION i888_chk_pk()
+FUNCTION i888_chk_pk() 
 
 
     DEFINE l_cnt LIKE type_file.num10
 
-    DISPLAY "DEBUG azb01 = [" || g_azb.azb01 || "]"
-
 
     --主键不能为空
-    IF g_azb.azb01 IS NULL OR g_azb.azb01 = "" THEN 
-        MESSAGE "主键不可为空，请输入签核人员编号！"
+    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = "" THEN 
+        MESSAGE "主键不能为空！"
         RETURN FALSE 
     END IF 
 
     --检查主键是否存在
-    SELECT COUNT(*) INTO l_cnt FROM azb_file
+    SELECT COUNT(*) 
+    INTO l_cnt 
+    FROM azb_file
     WHERE TRIM(azb01) = TRIM(g_azb.azb01)
 
     IF l_cnt > 0 THEN 
-        MESSAGE "编号 [" || g_azb.azb01 || "] 已存在，无法新增"
+        MESSAGE "编号已存在无法新增"
         RETURN FALSE
     END IF 
 
@@ -256,7 +283,7 @@ FUNCTION i888_chk_insert()
         -- 必填栏位检查
         -- 逻辑检查（日期大小、状态组合等）
 
-        IF g_azb.azboriu IS NULL OR g_azb.azboriu = '' THEN 
+        IF g_azb.azboriu IS NULL OR g_azb.azboriu CLIPPED = "" THEN 
             MESSAGE "人员名称不能为空"
             RETURN FALSE 
         END IF 
@@ -274,7 +301,7 @@ FUNCTION i888_show()
     --LET g_azb.AZBDATE = TODAY 
 
     DISPLAY BY NAME g_azb.*  --BY NAME 显示在画面档 或者DISPLAY g_azb.* TO FORM *
-    DISPLAY g_azb.*             --显示在Linux终端
+    --DISPLAY g_azb.*             --显示在Linux终端
     
 END FUNCTION 
 
