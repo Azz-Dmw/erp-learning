@@ -76,8 +76,7 @@ MAIN
     LET p_col = 10
 
         {打开一个窗口 i010_w
-        使用 .per 表单
-        套用系统统一风格}
+        使用 .per 表单套用系统统一风格}
     OPEN WINDOW i010_w AT p_row, p_col
         WITH FORM "aoo/42f/aooi888"
         ATTRIBUTE (STYLE = g_win_style CLIPPED)
@@ -115,12 +114,21 @@ FUNCTION i010_menu()
 
         --新增功能按钮
         ON ACTION INSERT
-            CALL i010_insert()   --调用新增功能函数
+            CALL i888_insert()   --调用新增功能函数
+            
             --MESSAGE "insert (empty)"
+            {新增流程
+            MENU → i888_insert()
+                    ├─ INITIALIZE   --初始化变量
+                    ├─ CLEAR FORM   --清画面
+                    ├─ INPUT BY NAME g_azb.*    --输入值
+                    ├─ i010_chk_insert()        --检查输入值是否合法
+                    └─ MESSAGE 成功               --提示成功
+             }
 
         --查新功能按钮
         ON ACTION query
-             CALL i010_show()   ----调用查询功能函数
+             CALL i888_show()   ----调用查询功能函数
              MESSAGE "query (empty)"
 
         --修改功能按钮
@@ -152,43 +160,121 @@ FUNCTION i010_menu()
 END FUNCTION
 
 
-FUNCTION i010_show()
 
-    --模拟一笔查询到的资料
-    --LET g_azb.azb01 = "0000"
-    LET g_azb.azboriu = "测试人员"
-    LET g_azb.AZBDATE = TODAY 
 
-    DISPLAY BY NAME g_azb.*  --BY NAME 显示在画面档 或者DISPLAY g_azb.* TO FORM *
-    DISPLAY g_azb.*             --显示在Linux终端
+--新增功能函数
+FUNCTION i888_insert() 
+
+    DEFINE l_ok LIKE type_file.num5
+
+    --初始化变量
+    INITIALIZE g_azb.* TO NULL 
+
+    --清画面
+    CLEAR FORM 
+
+    --注意：INITIALIZE、CLEAR FORM作用和区别
+    --INITIALIZE：清变量，INITIALIZE g_azb.* TO NULL，画面不会自动清除。
+    --CLEAR FORM：清画面,变量还在，只是画面清理了
+
+
+    --一次性输入全部栏位
+    INPUT BY NAME g_azb.*
+        BEFORE INPUT 
+            MESSAGE "请输入新增资料"
+
+        --主键检查
+        AFTER FIELD azb01
+            IF NOT i888_chk_pk() THEN 
+                NEXT FIELD azb01
+            END IF 
+
+        {AFTER INPUT 
+            IF NOT i888_chk_pk() THEN 
+                MESSAGE "主键资料不合法，请重新出入"
+                NEXT FIELD azb01
+            END IF 
+        }
+    END INPUT 
+    
+
+    --整体检查
+    IF NOT i888_chk_insert() THEN 
+        MESSAGE "主键字段非法，新增取消"
+        RETURN 
+    END IF 
+
+    --确认是否新增
+    LET l_ok = cl_confirm("是否确认新增此笔资料？")
+
+    IF l_ok <> 1 THEN 
+        MESSAGE "已取消新增"
+        RETURN 
+    END IF 
+
+    --假装新增成功
+    MESSAGE "新增成功（未写入数据库）"
+
+    CALL i888_show()
+    
     
 END FUNCTION 
 
 
-FUNCTION i010_insert()   --新增功能函数
-
-    INITIALIZE g_azb.* TO NULL 
-
-    CLEAR FORM --清画面,变量还在，直接画面清理了
-                --清变量，INITIALIZE g_azb.* TO NULL，画面不会自动清除，注意区别和用法
-    
-    INPUT BY NAME g_azb.*   --输入值 → 自动进 g_azb
-        BEFORE INPUT 
-        MESSAGE "请输入新增资料"
+--检查主键是否合法
+FUNCTION i888_chk_pk()
 
 
-        --AFTER INPUT 
-        --MESSAGE "输入完成"
-    END INPUT
+    DEFINE l_cnt LIKE type_file.num10
 
-   IF NOT i010_chk_insert() THEN 
-        RETURN 
+    DISPLAY "DEBUG azb01 = [" || g_azb.azb01 || "]"
+
+
+    --主键不能为空
+    IF g_azb.azb01 IS NULL OR g_azb.azb01 = "" THEN 
+        MESSAGE "主键不可为空，请输入签核人员编号！"
+        RETURN FALSE 
     END IF 
 
-    MESSAGE "新增成功（假成功）"
+    --检查主键是否存在
+    SELECT COUNT(*) INTO l_cnt FROM azb_file
+    WHERE TRIM(azb01) = TRIM(g_azb.azb01)
 
-    --显示结果（假装新增成功）
-    CALL i010_show()
+    IF l_cnt > 0 THEN 
+        MESSAGE "编号 [" || g_azb.azb01 || "] 已存在，无法新增"
+        RETURN FALSE
+    END IF 
+
+    --检查通过
+    RETURN TRUE 
+
+END FUNCTION
+
+
+FUNCTION i888_chk_insert()
+        -- 这里以后可以放：
+        -- 必填栏位检查
+        -- 逻辑检查（日期大小、状态组合等）
+
+        IF g_azb.azboriu IS NULL OR g_azb.azboriu = '' THEN 
+            MESSAGE "人员名称不能为空"
+            RETURN FALSE 
+        END IF 
+
+        RETURN TRUE 
+        
+END FUNCTION 
+
+
+FUNCTION i888_show()
+
+    --模拟一笔查询到的资料
+    --LET g_azb.azb01 = "0000"
+    --LET g_azb.azboriu = "测试人员"
+    --LET g_azb.AZBDATE = TODAY 
+
+    DISPLAY BY NAME g_azb.*  --BY NAME 显示在画面档 或者DISPLAY g_azb.* TO FORM *
+    DISPLAY g_azb.*             --显示在Linux终端
     
 END FUNCTION 
 
@@ -206,34 +292,9 @@ FUNCTION i010_fetch(p_mode)
             LET g_azb.azb01 = "OTHER"
     END CASE 
 
-    CALL i010_show()
+    CALL i888_show()
     
 END FUNCTION 
-
---检查主键唯一并且不能为空
-FUNCTION i010_chk_insert()
-
-    DEFINE l_cnt LIKE type_file.num10
-
-    --主键不能为空
-    IF g_azb.azb01 IS NULL OR g_azb.azb01 = "" THEN 
-        MESSAGE "主键不可为空，请输入签核人员编号！"
-        RETURN FALSE 
-    END IF 
-
-    --检查主键是否存在
-    SELECT COUNT(*) INTO l_cnt FROM azb_file
-    WHERE azb01 = g_azb.azb01
-
-    IF l_cnt > 0 THEN 
-        MESSAGE "编号 [" || g_azb.azb01 || "] 已存在，无法新增"
-        RETURN FALSE
-    END IF 
-
-    --检查通过
-    RETURN TRUE 
-
-END FUNCTION
 
 
 
