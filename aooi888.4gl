@@ -131,10 +131,9 @@ FUNCTION i010_menu()
 
              }
 
-        --查新功能按钮
+        --查询功能按钮
         ON ACTION query
-             CALL i888_show()   ----调用查询功能函数
-             MESSAGE "query (empty)"
+             CALL i888_query()   ----调用查询功能函数
 
         --修改功能按钮
         ON ACTION modify
@@ -166,8 +165,10 @@ END FUNCTION
 
 
 
+--========================
+--  新增功能
+--========================
 
---新增功能函数
 FUNCTION i888_insert()  
 
     DEFINE l_ok LIKE type_file.num5
@@ -215,7 +216,7 @@ FUNCTION i888_insert()
     -- === 正式新增到数据库 ===
     --主键重复、NOT NULL 违反、触发器错误
     --全局错误处理模式
-    --WHENEVER ERROR CALL cl_err_msg_log 
+    WHENEVER ERROR CALL cl_err_msg_log 
 
     --插入数据库
     --INSERT INTO azb_file VALUES (g_azb.*)
@@ -236,7 +237,7 @@ FUNCTION i888_insert()
 
 
     --关闭全局错误处理模式
-    --WHENEVER ERROR STOP 
+    WHENEVER ERROR STOP 
 
     IF SQLCA.SQLCODE <> 0 THEN
         MESSAGE "新增失败，SQLCODE = " || SQLCA.SQLCODE
@@ -296,6 +297,55 @@ FUNCTION i888_chk_insert()
 
         RETURN TRUE 
         
+END FUNCTION 
+
+
+
+--========================
+-- 查询功能
+--========================
+FUNCTION i888_query()
+
+    DEFINE l_cnt LIKE type_file.num10   --定义临时变量
+
+    --清变量 + 清画面
+    INITIALIZE g_azb.* TO NULL 
+    CLEAR FORM 
+
+    --输入查询条件（这里只用azb01查询）
+    INPUT BY NAME g_azb.azb01
+        BEFORE INPUT 
+            MESSAGE "请输入人员编号查询"
+    END INPUT 
+
+    --未输入直接离开
+    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = "" THEN 
+        MESSAGE "未输入查询条件"
+        RETURN 
+    END IF 
+
+    --先确认是否存在
+    SELECT COUNT(*)
+    INTO l_cnt
+    FROM azb_file
+    WHERE TRIM(azb01) = TRIM(g_azb.azb01)
+
+    IF l_cnt = 0 THEN 
+        MESSAGE "查无资料！"
+        INITIALIZE g_azb.* TO NULL 
+        CLEAR FORM 
+        RETURN 
+    END IF 
+
+    --查询资料
+    SELECT *
+    INTO g_azb.*
+    FROM azb_file
+    WHERE TRIM(azb01) = TRIM(g_azb.azb01)
+
+    --显示到画面
+    DISPLAY BY NAME g_azb.*
+
 END FUNCTION 
 
 
