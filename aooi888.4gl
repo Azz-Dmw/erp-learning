@@ -304,20 +304,107 @@ END FUNCTION
 --========================
 -- 查询功能
 --========================
+
 FUNCTION i888_query()
 
-    DEFINE l_cnt LIKE type_file.num10   --定义临时变量
+    --DEFINE l_cnt LIKE type_file.num10   --定义临时变量
+
+    DEFINE l_where STRING 
+    DEFINE l_sql STRING 
+    --DEFINE l_azb01 LIKE azb_file.azb01
+
+
 
     --清变量 + 清画面
     INITIALIZE g_azb.* TO NULL 
     CLEAR FORM 
 
     --输入查询条件（这里只用azb01查询）
-    INPUT BY NAME g_azb.azb01
+    INPUT BY NAME 
+        g_azb.azb01,--人员编号
+        g_azb.azboriu,--人员名称
+        g_azb.azbacti,--有效码
+        g_azb.azbuser,--资料所有者
+        g_azb.azbgrup --资料群组
         BEFORE INPUT 
-            MESSAGE "请输入人员编号查询"
+            MESSAGE "请输入查询条件"
     END INPUT 
 
+    DISPLAY "DEBUG INPUT azb01=[" || g_azb.azb01 || "]"
+
+    
+    --组where条件
+    LET l_where = " WHERE 1 = 1 "
+    LET l_sql   = "SELECT * FROM azb_file "
+
+    DISPLAY "DEBUG INPUT l_where=[" || l_where || "]"
+    DISPLAY "DEBUG INPUT l_sql=[" || l_sql || "]"
+    DISPLAY "DEBUG2 BEFORE IF azb01=[" || g_azb.azb01 || "]"
+
+    {LET l_azb01 = g_azb.azb01   -- 🔒 保存副本
+
+    IF l_azb01 IS NOT NULL AND l_azb01 CLIPPED <> " " THEN
+    LET l_where = l_where ||
+        " AND TRIM(azb01) = '" || l_azb01 CLIPPED || "'"
+    END IF
+    }
+    
+    --人员编号
+    IF g_azb.azb01 IS NOT NULL AND g_azb.azb01 CLIPPED <> " " THEN 
+        LET l_where = l_where || " AND TRIM(azb01) = '" || g_azb.azb01 CLIPPED || "'"
+            DISPLAY "DEBUG SQL1111 => " || l_where
+    END IF 
+    
+    --人员名称
+    IF g_azb.azboriu IS NOT NULL AND g_azb.azboriu CLIPPED <> " " THEN 
+        LET l_where = l_where ||
+            " AND azboriu like '%" || g_azb.azboriu CLIPPED || "%'"
+    END IF 
+
+    --资料有效码
+    IF g_azb.azbacti IS NOT NULL AND g_azb.azbacti CLIPPED <> " " THEN 
+        LET l_where = l_where ||
+            " AND azbacti = '" || g_azb.azbacti CLIPPED || "'"
+    END IF 
+
+    --资料所有者
+    IF g_azb.azbuser IS NOT NULL AND g_azb.azbuser CLIPPED <> " " THEN 
+        LET l_where = l_where ||
+            " AND azbuser = '" || g_azb.azbuser CLIPPED || "'"
+    END IF
+
+    --资料群组
+    IF g_azb.azbgrup IS NOT NULL AND g_azb.azbgrup CLIPPED <> " " THEN 
+        LET l_where = l_where ||
+            " AND azbgrup = '" || g_azb.azbgrup CLIPPED || "'"
+    END IF
+
+    --组完整SQL
+    --LET l_sql = "SELECT * FROM azb_file " || l_where || "ORDER BY azb01"
+    LET l_sql = l_sql || l_where || " ORDER BY azb01"
+                                                    
+    --★★★ Debug：显示最终 SQL ★★★
+    DISPLAY "DEBUG SQL => " || l_sql
+
+    --执行查询
+    PREPARE s_qry FROM l_sql
+    DECLARE c_qry CURSOR FOR s_qry
+    OPEN c_qry
+
+    FETCH c_qry INTO g_azb.*
+
+    IF SQLCA.SQLCODE <> 0 THEN 
+        MESSAGE "查无资料"
+        CLOSE c_qry
+        RETURN
+    END IF 
+
+    --显示结果
+    DISPLAY BY NAME g_azb.*
+
+    CLOSE c_qry
+
+    {
     --未输入直接离开
     IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = "" THEN 
         MESSAGE "未输入查询条件"
@@ -345,16 +432,11 @@ FUNCTION i888_query()
 
     --显示到画面
     DISPLAY BY NAME g_azb.*
-
+}
 END FUNCTION 
 
 
 FUNCTION i888_show()
-
-    --模拟一笔查询到的资料
-    --LET g_azb.azb01 = "0000"
-    --LET g_azb.azboriu = "测试人员"
-    --LET g_azb.AZBDATE = TODAY 
 
     DISPLAY BY NAME g_azb.*  --BY NAME 显示在画面档 或者DISPLAY g_azb.* TO FORM *
     --DISPLAY g_azb.*             --显示在Linux终端
