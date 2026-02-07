@@ -4,7 +4,7 @@
 # Date & Author..: 2026/02/04 By dmw
 # Note...........: 本程序为训练测试程序（空壳版）
 
-DATABASE ds --连接ds数据库
+DATABASE jf --连接ds数据库
 
 GLOBALS "../../config/top.global" 
 --把 top.global 这个文件里的 全局变量 / 函数 引进来
@@ -188,6 +188,8 @@ FUNCTION i888_insert()
             MESSAGE "请输入新增资料" 
     END INPUT 
 
+    LET g_azb.AZBDATE = TODAY 
+
 
     --主键检查
     IF NOT i888_chk_pk() THEN 
@@ -218,14 +220,18 @@ FUNCTION i888_insert()
     --插入数据库
     --INSERT INTO azb_file VALUES (g_azb.*)
     INSERT INTO azb_file (
-    azb01,
-    azboriu,
-    azbdate
+        azb01,
+        azboriu,
+        azb02,
+        azbdate,
+        azbuser
     )
     VALUES (
-        TRIM(g_azb.azb01),
-        TRIM(g_azb.azboriu),
-        TRIM(g_azb.azbdate)
+        g_azb.azb01,
+        g_azb.azboriu,
+        g_azb.azb02,
+        g_azb.azbdate,
+        g_user   -- 通常用登入者
     )
 
 
@@ -234,11 +240,11 @@ FUNCTION i888_insert()
 
     IF SQLCA.SQLCODE <> 0 THEN
         MESSAGE "新增失败，SQLCODE = " || SQLCA.SQLCODE
-        ROLLBACK WORK 
+        ROLLBACK WORK       --注意：ROLLBACK后面一定要加WORK
         RETURN  
     END IF
 
-    COMMIT WORK 
+    COMMIT WORK             --注意：COMMIT后面一定要加WORK
     MESSAGE "新增成功"
 
     --显示新增后的资料
