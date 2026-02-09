@@ -69,7 +69,7 @@ MAIN
     LET g_forupd_sql =
         "SELECT * FROM azb_file WHERE rowid = ? FOR UPDATE NOWAIT"  --查询一笔资料，并且 锁住，NOWAIT：有人锁 → 直接报错
 
-    DECLARE i010_cl CURSOR FROM g_forupd_sql    --为 FOR UPDATE 准备游标，只有 DECLARE，真正执行是在 OPEN / FETCH
+    DECLARE i888_cl CURSOR FROM g_forupd_sql    --为 FOR UPDATE 准备游标，只有 DECLARE，真正执行是在 OPEN / FETCH
 
     --设定窗口位置
     LET p_row = 5
@@ -99,10 +99,8 @@ END MAIN
 
 
 # =========================
-# 以下全部是【空壳函数】
-# 目的：让 linker 找得到
+# 功能菜单总览
 # =========================
-
 
 FUNCTION i010_menu()
 
@@ -116,28 +114,13 @@ FUNCTION i010_menu()
         ON ACTION INSERT
             CALL i888_insert()   --调用新增功能函数
             
-            --MESSAGE "insert (empty)"
-            {  菜单 INSERT
-                  ↓
-                i888_insert()
-                  ├─ 清变量 / 清画面
-                  ├─ INPUT BY NAME 输入
-                  ├─ 主键即时检查（AFTER FIELD azb01）
-                  ├─ 整体检查（i888_chk_insert）
-                  ├─ 确认
-                  ├─ INSERT INTO azb_file (...)
-                  ├─ COMMIT
-                  └─ 重新显示画面
-
-             }
-
         --查询功能按钮
         ON ACTION query
-             CALL i888_query()   ----调用查询功能函数
+             CALL i888_query()   --调用查询功能函数
 
         --修改功能按钮
         ON ACTION modify
-            MESSAGE "modify (empty)"
+            CALL i888_modify()    --调用修改功能函数
 
         --删除功能按钮
         ON ACTION delete
@@ -148,7 +131,7 @@ FUNCTION i010_menu()
 
         --说明功能按钮
         ON ACTION help
-            CALL cl_show_help()     ------调用说明功能函数
+            CALL cl_show_help()     --调用说明功能函数
 
         --退出功能按钮
         ON ACTION exit
@@ -166,7 +149,7 @@ END FUNCTION
 
 
 --========================
---  新增功能
+--  新增功能函数
 --========================
 
 FUNCTION i888_insert()  
@@ -179,7 +162,7 @@ FUNCTION i888_insert()
     --清画面
     CLEAR FORM 
 
-    --注意：INITIALIZE、CLEAR FORM作用和区别
+    --注意：INITIALIZE与CLEAR FORM作用和区别
     --INITIALIZE：清变量，INITIALIZE g_azb.* TO NULL，画面不会自动清除。
     --CLEAR FORM：清画面,变量还在，只是画面清理了
 
@@ -189,7 +172,7 @@ FUNCTION i888_insert()
             MESSAGE "请输入新增资料" 
     END INPUT 
 
-    LET g_azb.AZBDATE = TODAY 
+    LET g_azb.AZBDATE = TODAY   --赋值g_azb.AZBDATE日期为今天
 
 
     --主键检查
@@ -263,7 +246,7 @@ FUNCTION i888_chk_pk()
 
 
     --主键不能为空
-    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = "" THEN 
+    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN 
         MESSAGE "主键不能为空！"
         RETURN FALSE 
     END IF 
@@ -284,35 +267,30 @@ FUNCTION i888_chk_pk()
 
 END FUNCTION
 
-
-FUNCTION i888_chk_insert()
         -- 这里以后可以放：
         -- 必填栏位检查
         -- 逻辑检查（日期大小、状态组合等）
+FUNCTION i888_chk_insert()
 
-        IF g_azb.azboriu IS NULL OR g_azb.azboriu CLIPPED = "" THEN 
+        IF g_azb.azboriu IS NULL OR g_azb.azboriu CLIPPED = " " THEN 
             MESSAGE "人员名称不能为空"
             RETURN FALSE 
         END IF 
 
         RETURN TRUE 
         
-END FUNCTION 
+END FUNCTION    -- 新增功能函数结束
 
 
 
 --========================
--- 查询功能
+-- 查询功能函数
 --========================
 
 FUNCTION i888_query()
 
-    --DEFINE l_cnt LIKE type_file.num10   --定义临时变量
-
     DEFINE l_where STRING 
     DEFINE l_sql STRING 
-    --DEFINE l_azb01 LIKE azb_file.azb01
-
 
 
     --清变量 + 清画面
@@ -333,7 +311,7 @@ FUNCTION i888_query()
     DISPLAY "DEBUG INPUT azb01=[" || g_azb.azb01 || "]"
 
     
-    --组where条件
+    --SQL拼接where条件
     LET l_where = " WHERE 1 = 1 "
     LET l_sql   = "SELECT * FROM azb_file "
 
@@ -341,18 +319,10 @@ FUNCTION i888_query()
     DISPLAY "DEBUG INPUT l_sql=[" || l_sql || "]"
     DISPLAY "DEBUG2 BEFORE IF azb01=[" || g_azb.azb01 || "]"
 
-    {LET l_azb01 = g_azb.azb01   -- 🔒 保存副本
-
-    IF l_azb01 IS NOT NULL AND l_azb01 CLIPPED <> " " THEN
-    LET l_where = l_where ||
-        " AND TRIM(azb01) = '" || l_azb01 CLIPPED || "'"
-    END IF
-    }
     
     --人员编号
     IF g_azb.azb01 IS NOT NULL AND g_azb.azb01 CLIPPED <> " " THEN 
         LET l_where = l_where || " AND TRIM(azb01) = '" || g_azb.azb01 CLIPPED || "'"
-            DISPLAY "DEBUG SQL1111 => " || l_where
     END IF 
     
     --人员名称
@@ -379,8 +349,7 @@ FUNCTION i888_query()
             " AND azbgrup = '" || g_azb.azbgrup CLIPPED || "'"
     END IF
 
-    --组完整SQL
-    --LET l_sql = "SELECT * FROM azb_file " || l_where || "ORDER BY azb01"
+    --拼接完整SQL
     LET l_sql = l_sql || l_where || " ORDER BY azb01"
                                                     
     --★★★ Debug：显示最终 SQL ★★★
@@ -402,38 +371,180 @@ FUNCTION i888_query()
     --显示结果
     DISPLAY BY NAME g_azb.*
 
+    MESSAGE "查询成功！"
+
     CLOSE c_qry
 
-    {
-    --未输入直接离开
-    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = "" THEN 
-        MESSAGE "未输入查询条件"
+END FUNCTION    -- 查询功能函数结束
+
+
+
+--========================
+--  修改功能函数
+--========================
+FUNCTION i888_modify()
+
+    DEFINE l_ok LIKE type_file.num5
+    DEFINE l_today DATE
+    LET l_today = TODAY
+
+
+    --清变量 + 清画面
+    INITIALIZE g_azb.* TO NULL 
+    CLEAR FORM 
+
+    --先输入要修改的主键
+    INPUT BY NAME g_azb.azb01
+        BEFORE INPUT 
+            MESSAGE "请输入要修改的人员编号"
+    END INPUT 
+
+    --主键检查
+    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN 
+        MESSAGE "人员编号不能为空！"
         RETURN 
     END IF 
 
-    --先确认是否存在
-    SELECT COUNT(*)
-    INTO l_cnt
-    FROM azb_file
-    WHERE TRIM(azb01) = TRIM(g_azb.azb01)
+    --先取rowid
+    SELECT rowid
+        INTO g_azb_rowid
+        FROM azb_file
+        WHERE TRIM(azb01) = TRIM(g_azb.azb01)
 
-    IF l_cnt = 0 THEN 
-        MESSAGE "查无资料！"
-        INITIALIZE g_azb.* TO NULL 
-        CLEAR FORM 
-        RETURN 
+    IF SQLCA.SQLCODE <> 0 THEN 
+        MESSAGE "资料不存在，无法修改！"
+        RETURN
     END IF 
 
-    --查询资料
+    --再取整笔资料
     SELECT *
-    INTO g_azb.*
-    FROM azb_file
-    WHERE TRIM(azb01) = TRIM(g_azb.azb01)
+        INTO g_azb.*
+        FROM azb_file
+        WHERE rowid = g_azb_rowid
 
-    --显示到画面
+    --显示原资料
     DISPLAY BY NAME g_azb.*
-}
-END FUNCTION 
+
+    --备份原资料，方便比对和rollback
+    --LET g_azb_t = g_azb
+
+    --=== 锁资料（FOR UPDATE）===
+
+    --开事务
+    BEGIN WORK 
+
+    --开锁定游标
+    OPEN i888_cl USING g_azb_rowid
+    
+    FETCH i888_cl INTO g_azb.*
+
+    IF SQLCA.SQLCODE <> 0 THEN 
+        MESSAGE "资料被其他人使用中，无法修改！"
+        CLOSE i888_cl
+        ROLLBACK WORK 
+        RETURN
+    END IF 
+
+    --进入修改输入（主键不可修改）
+    INPUT BY NAME 
+        g_azb.azboriu,
+        g_azb.azb02,
+        g_azb.azbacti,
+        g_azb.azbgrup
+        BEFORE INPUT 
+            MESSAGE "请修改资料（ESC取消）"
+    END INPUT 
+
+    --资料检查
+    IF NOT i888_chk_modify() THEN 
+        MESSAGE "资料检查失败,修改取消"
+        CLOSE i888_cl
+        RETURN
+    END IF 
+
+    --确认
+    LET l_ok = cl_confirm("是否确认修改此笔资料？")
+
+    IF l_ok <> 1 THEN 
+        MESSAGE "已取消修改！"
+        CLOSE i888_cl
+        RETURN 
+    END IF 
+
+    --=== 正式 UPDATE ===
+    WHENEVER ERROR CALL cl_err_msg_log
+
+    {UPDATE azb_file
+        SET azb02 = g_azb.azb02,
+            azbuser = g_user,
+            azbdate = TODAY 
+        WHERE CURRENT OF i888_cl
+    }
+
+    LET g_sql = 
+        "UPDATE azb_file SET " ||
+        "azboriu = ?, " ||  --姓名
+        "azb02 = ?," ||     --人员编号
+        "azbuser = ?," ||   --资料所有者
+        "azbdate = ? " ||   --最近更改日
+        "WHERE rowid = ?"
+
+    DISPLAY "DEBUS SQL => UPDATE BY ROWID"
+    DISPLAY "FINAL SQL = [" || g_sql || "]"
+    DISPLAY "FINAL UPDATE SQL = [" || g_sql || "]"
+    DISPLAY "ROWID = [" || g_azb_rowid || "]"
+
+
+    
+    PREPARE s_upd FROM g_sql
+
+    EXECUTE s_upd USING
+        g_azb.azboriu,   -- 姓名 
+        g_azb.azb02,    --人员编号
+        g_user,         --资料所有者
+        l_today,        --最近更改日
+        g_azb_rowid
+    
+    DISPLAY "DEBUG SQLCA.SQLERRD[3] = " || SQLCA.SQLERRD[3]
+
+
+    WHENEVER ERROR STOP 
+
+    IF SQLCA.SQLCODE <> 0 THEN 
+        MESSAGE "修改失败,SQLCODE = " || SQLCA.SQLCODE
+        CLOSE i888_cl
+        ROLLBACK WORK
+        RETURN 
+    END IF 
+
+    CLOSE i888_cl
+    COMMIT WORK 
+
+    MESSAGE "修改成功!"
+
+    --显示修改后资料
+    CALL i888_show()
+
+END FUNCTION    -- 修改功能函数结束
+
+
+    
+--========================
+-- 修改资料 检查函数
+--========================
+
+FUNCTION i888_chk_modify()
+
+    IF g_azb.azboriu IS NULL OR g_azb.azboriu CLIPPED = " " THEN 
+        MESSAGE "人员名称不能为空！"
+        RETURN FALSE 
+    END IF
+
+    RETURN TRUE 
+
+END FUNCTION    --修改资料检查函数结束
+
+
 
 
 FUNCTION i888_show()
