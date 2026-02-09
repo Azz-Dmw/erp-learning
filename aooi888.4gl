@@ -385,6 +385,8 @@ END FUNCTION    -- 查询功能函数结束
 FUNCTION i888_modify()
 
     DEFINE l_ok LIKE type_file.num5
+
+    --先将最近修改日的时间赋值
     DEFINE l_today DATE
     LET l_today = TODAY
 
@@ -474,25 +476,18 @@ FUNCTION i888_modify()
     --=== 正式 UPDATE ===
     WHENEVER ERROR CALL cl_err_msg_log
 
-    {UPDATE azb_file
-        SET azb02 = g_azb.azb02,
-            azbuser = g_user,
-            azbdate = TODAY 
-        WHERE CURRENT OF i888_cl
-    }
-
+    --拼接SQL
     LET g_sql = 
         "UPDATE azb_file SET " ||
         "azboriu = ?, " ||  --姓名
-        "azb02 = ?," ||     --人员编号
+        "azb02 = ?," ||     --密码
         "azbuser = ?," ||   --资料所有者
         "azbdate = ? " ||   --最近更改日
         "WHERE rowid = ?"
 
-    DISPLAY "DEBUS SQL => UPDATE BY ROWID"
-    DISPLAY "FINAL SQL = [" || g_sql || "]"
-    DISPLAY "FINAL UPDATE SQL = [" || g_sql || "]"
-    DISPLAY "ROWID = [" || g_azb_rowid || "]"
+    DISPLAY "FINAL SQL = [" || g_sql || "]" --输出将要执行的SQL
+    DISPLAY "FINAL UPDATE SQL = [" || g_sql || "]"  --输出将要执行的SQL
+    DISPLAY "ROWID = [" || g_azb_rowid || "]"   --输出行id
 
 
     
@@ -505,6 +500,7 @@ FUNCTION i888_modify()
         l_today,        --最近更改日
         g_azb_rowid
     
+
     DISPLAY "DEBUG SQLCA.SQLERRD[3] = " || SQLCA.SQLERRD[3]
 
 
