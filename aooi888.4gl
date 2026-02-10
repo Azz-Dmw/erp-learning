@@ -123,8 +123,9 @@ FUNCTION i010_menu()
             CALL i888_modify()    --调用修改功能函数
 
         --删除功能按钮
-        ON ACTION delete
-            MESSAGE "delete (empty)"
+        ON ACTION DELETE
+            CALL i888_delete()
+            --MESSAGE "delete (empty)"
 
         ON ACTION FIRST
             CALL i010_fetch('F')
@@ -197,6 +198,7 @@ FUNCTION i888_insert()
     END IF 
 
     -- === 正式新增到数据库 ===
+    
     --主键重复、NOT NULL 违反、触发器错误
     --全局错误处理模式
     WHENEVER ERROR CALL cl_err_msg_log 
@@ -540,6 +542,108 @@ FUNCTION i888_chk_modify()
 
 END FUNCTION    --修改资料检查函数结束
 
+
+
+--========================
+--  删除功能函数
+--========================
+FUNCTION i888_delete()
+
+    DEFINE l_ok LIKE type_file.num5
+    DEFINE l_sql STRING 
+
+    --清变量 + 清画面
+    INITIALIZE g_azb.* TO NULL 
+    CLEAR FORM 
+
+    --输入要删除的主键
+    INPUT BY NAME g_azb.azb01
+        BEFORE INPUT 
+            MESSAGE "请输入要删除的人员编号"
+    END INPUT 
+
+    --主键检查
+    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN 
+        MESSAGE "人员编号不能为空！"
+        RETURN 
+    END IF 
+
+    --先取rowid
+    SELECT ROWID
+        INTO g_azb_rowid
+        FROM azb_file
+        WHERE TRIM(azb01) = TRIM(g_azb.azb01)
+
+    IF SQLCA.SQLCODE <> 0 THEN 
+        MESSAGE "资料不存在,无法删除！"
+        RETURN 
+    END IF 
+
+    SELECT *
+        INTO g_azb.*
+        FROM azb_file
+        WHERE ROWID = g_azb_rowid
+
+    --显示将要删除的资料
+    DISPLAY BY NAME g_azb.*
+
+    --二次确认
+    LET l_ok = cl_confirm("确认要删除此笔资料吗？(删除后无法恢复！)")
+
+    IF l_ok <> 1 THEN 
+        MESSAGE "已取消删除"
+        RETURN 
+    END IF 
+
+    --=== 开始删除 ===
+    WHENEVER ERROR CALL cl_err_msg_log
+
+    BEGIN WORK 
+
+    --锁资料
+    OPEN i888_cl USING g_azb_rowid
+    FETCH i888_cl INTO g_azb.*
+
+    IF SQLCA.SQLCODE <> 0 THEN 
+        MESSAGE "资料被其他人使用中,无法删除！"
+        CLOSE i888_cl
+        ROLLBACK WORK 
+        RETURN 
+    END IF
+
+    --删除SQL
+    LET l_sql = "DELETE FROM azb_file WHERE rowid = ?"
+
+    DISPLAY "DELETE SQL => " || l_sql
+    DISPLAY "ROWID = [" || g_azb_rowid || "]"
+
+   --执行删除
+    DELETE FROM azb_file
+        WHERE ROWID = g_azb_rowid
+
+    --显示影响行数
+    DISPLAY "DELETE ROW COUNT = " || SQLCA.SQLERRD[3]
+
+    IF SQLCA.SQLCODE <> 0 THEN 
+        MESSAGE "删除失败,SQLCODE = " || SQLCA.SQLCODE
+        CLOSE i888_cl
+        ROLLBACK WORK 
+        RETURN 
+    END IF 
+
+    CLOSE i888_cl
+    COMMIT WORK 
+
+    MESSAGE "删除成功！"
+
+    --清画面
+    INITIALIZE g_azb.* TO NULL 
+    CLEAR FORM 
+
+    WHENEVER ERROR STOP 
+        
+    
+END FUNCTION 
 
 
 
