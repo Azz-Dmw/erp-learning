@@ -124,8 +124,12 @@ FUNCTION i010_menu()
 
         --删除功能按钮
         ON ACTION DELETE
-            CALL i888_delete()
-            --MESSAGE "delete (empty)"
+            CALL i888_delete()    --调用删除功能函数
+
+        --复制功能按钮
+        ON ACTION reproduce
+            --LET g_action_choice="reproduce"
+            CALL i888_copy()    --调佣复制功能函数
 
         ON ACTION FIRST
             CALL i010_fetch('F')
@@ -223,6 +227,7 @@ FUNCTION i888_insert()
 
     PREPARE s_ins FROM g_sql
 
+    --执行insert新增SQL
     EXECUTE s_ins USING 
             g_azb.azb01,
             g_azb.azboriu,
@@ -234,28 +239,6 @@ FUNCTION i888_insert()
 
     --=== 显示影响行数 ===
     DISPLAY  "INSERT ROW COUNT = " || SQLCA.SQLERRD[3]
-
-    {--插入数据库
-    --INSERT INTO azb_file VALUES (g_azb.*)
-    INSERT INTO azb_file (
-        azb01,  --人员编号
-        azboriu,    --姓名
-        azb02,      --密码
-        azborig,    --部门编号
-        azb06,      --金额
-        azbdate,    --最近修改日
-        azbuser     --资料所有者
-    )
-    VALUES (
-        g_azb.azb01,    --人员编号
-        g_azb.azboriu,  --姓名
-        g_azb.azb02,    --密码
-        g_azb.azborig,  --部门编号
-        g_azb.azb06,    --金额
-        g_azb.azbdate,  --最近修改日
-        g_user      -- 资料所有者
-    )
-    }
 
     --关闭全局错误处理模式
     WHENEVER ERROR STOP 
@@ -406,6 +389,8 @@ FUNCTION i888_query()
     OPEN c_qry
 
     FETCH c_qry INTO g_azb.*
+    
+
 
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "查无资料"
@@ -472,8 +457,6 @@ FUNCTION i888_modify()
     --显示原资料
     DISPLAY BY NAME g_azb.*
 
-    --备份原资料，方便比对和rollback
-    --LET g_azb_t = g_azb
 
     --=== 锁资料（FOR UPDATE）===
 
@@ -686,7 +669,117 @@ FUNCTION i888_delete()
     WHENEVER ERROR STOP 
         
     
-END FUNCTION 
+END FUNCTION
+
+
+--========================
+--  复制功能函数
+--========================
+FUNCTION i888_copy()
+
+    -- 确保没有遗留的 FOR UPDATE 游标
+    --CLOSE i888_cl
+
+
+    DEFINE l_ok LIKE type_file.num5
+    --DEFINE l_old_azb01 LIKE azb_file.azb01
+
+    --清变量 + 清画面
+    --INITIALIZE g_azb.* TO NULL 
+    --CLEAR FORM 
+
+     --前提：画面上必须已经有一笔资
+    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN 
+        MESSAGE "请先查询一笔资料再复制"
+        RETURN 
+    END IF
+
+    --清掉不能复制的栏位
+    LET g_azb.azb01 = NULL  --  主键
+    LET g_azb.azbdate = TODAY   --新建立日
+    LET g_azb.azbuser = g_user  --新建立人
+
+    --画面同步
+    DISPLAY BY NAME g_azb.*
+
+    --输入新主键 + 调整资料
+    INPUT BY NAME
+        g_azb.azb01,
+        g_azb.azboriu,
+        g_azb.azb02,
+        g_azb.azbacti,
+        g_azb.azbgrup
+        BEFORE INPUT
+            MESSAGE "复制资料：请输入新编号"
+    END INPUT
+
+    --主键检查
+    IF NOT i888_chk_pk() THEN 
+        MESSAGE "主键重复,复制取消！"
+        RETURN 
+    END IF
+
+    --资料检查
+    IF NOT i888_chk_insert() THEN 
+        MESSAGE "资料检查失败,复制取消"
+        RETURN 
+    END IF 
+
+    --确认是否复制
+    LET l_ok = cl_confirm("是否复制此笔资料？")
+
+    IF l_ok <> 1 THEN 
+        MESSAGE "已取消复制"
+        RETURN 
+    END IF
+
+
+    BEGIN WORK
+
+    IF NOT i888_do_insert() THEN
+        ROLLBACK WORK
+        RETURN
+    END IF
+
+    COMMIT WORK
+    MESSAGE "复制成功！"
+
+END FUNCTION    --复制功能函数结束
+
+
+--实现复制之后插入函数
+FUNCTION i888_do_insert()
+
+    DEFINE l_sql STRING
+    DEFINE l_ret LIKE type_file.num5
+
+    WHENEVER ERROR CALL cl_err_msg_log
+
+    LET g_sql =
+        "INSERT INTO azb_file (" ||
+        "azb01, azboriu, azb02, azborig, azb06, azbdate, azbuser" ||
+        ") VALUES (?, ?, ?, ?, ?, ?, ?)"
+
+    PREPARE s_ins FROM g_sql
+
+    EXECUTE s_ins USING
+        g_azb.azb01,
+        g_azb.azboriu,
+        g_azb.azb02,
+        g_azb.azbacti,
+        g_azb.azbgrup,
+        g_azb.azbdate,
+        g_user
+
+    IF SQLCA.SQLCODE <> 0 THEN
+        MESSAGE "复制新增失败！"
+        RETURN FALSE
+    END IF
+
+    RETURN TRUE
+
+END FUNCTION
+
 
 
 
@@ -714,12 +807,4 @@ FUNCTION i010_fetch(p_mode)
     CALL i888_show()
     
 END FUNCTION 
-
-
-
-
-
-
-
-
 
