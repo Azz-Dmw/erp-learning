@@ -178,7 +178,7 @@ FUNCTION i888_insert()
 
     --主键检查
     IF NOT i888_chk_pk() THEN 
-        MESSAGE "主键检查失败，新增取消！"
+        MESSAGE "主键重复，新增取消！"
         RETURN 
     END IF 
 
@@ -198,28 +198,64 @@ FUNCTION i888_insert()
     END IF 
 
     -- === 正式新增到数据库 ===
+
+    --开事务
+    BEGIN WORK 
     
     --主键重复、NOT NULL 违反、触发器错误
     --全局错误处理模式
     WHENEVER ERROR CALL cl_err_msg_log 
 
-    --插入数据库
+    --=== 显示 INSERT SQL ===
+    LET g_sql = 
+            "INSERT INTO azb_file (" ||
+        "azb01, azboriu, azb02, azborig, azb06, azbdate, azbuser" ||
+        ") VALUES (?, ?, ?, ?, ?, ?, ?)"
+
+    DISPLAY "INSERT SQL => " || g_sql
+    DISPLAY "PARAM azb01   = [" || g_azb.azb01 || "]"
+    DISPLAY "PARAM azboriu = [" || g_azb.azboriu || "]"
+    DISPLAY "PARAM azb02   = [" || g_azb.azb02 || "]"
+    DISPLAY "PARAM azborig = [" || g_azb.azborig || "]"
+    DISPLAY "PARAM azb06   = [" || g_azb.azb06 || "]"
+    DISPLAY "PARAM azbdate = [" || g_azb.azbdate || "]"
+    DISPLAY "PARAM azbuser = [" || g_user || "]"
+
+    PREPARE s_ins FROM g_sql
+
+    EXECUTE s_ins USING 
+            g_azb.azb01,
+            g_azb.azboriu,
+            g_azb.azb02,
+            g_azb.azborig,
+            g_azb.azb06,
+            g_azb.azbdate,
+            g_user
+
+    --=== 显示影响行数 ===
+    DISPLAY  "INSERT ROW COUNT = " || SQLCA.SQLERRD[3]
+
+    {--插入数据库
     --INSERT INTO azb_file VALUES (g_azb.*)
     INSERT INTO azb_file (
-        azb01,
-        azboriu,
-        azb02,
-        azbdate,
-        azbuser
+        azb01,  --人员编号
+        azboriu,    --姓名
+        azb02,      --密码
+        azborig,    --部门编号
+        azb06,      --金额
+        azbdate,    --最近修改日
+        azbuser     --资料所有者
     )
     VALUES (
-        g_azb.azb01,
-        g_azb.azboriu,
-        g_azb.azb02,
-        g_azb.azbdate,
-        g_user   -- 通常用登入者
+        g_azb.azb01,    --人员编号
+        g_azb.azboriu,  --姓名
+        g_azb.azb02,    --密码
+        g_azb.azborig,  --部门编号
+        g_azb.azb06,    --金额
+        g_azb.azbdate,  --最近修改日
+        g_user      -- 资料所有者
     )
-
+    }
 
     --关闭全局错误处理模式
     WHENEVER ERROR STOP 
@@ -230,7 +266,14 @@ FUNCTION i888_insert()
         RETURN  
     END IF
 
+    IF SQLCA.SQLERRD[3] <> 1 THEN
+        MESSAGE "新增影响行数异常 = " || SQLCA.SQLERRD[3]
+        ROLLBACK WORK
+        RETURN
+    END IF
+
     COMMIT WORK             --注意：COMMIT后面一定要加WORK
+    
     MESSAGE "新增成功"
 
     --显示新增后的资料
