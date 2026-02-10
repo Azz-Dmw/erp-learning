@@ -129,8 +129,8 @@ FUNCTION i010_menu()
         --复制功能按钮
         ON ACTION reproduce
             --LET g_action_choice="reproduce"
-            --CALL i888_copy()    --调佣复制功能函数
-            MESSAGE "复制"
+            CALL i888_copy()    --调佣复制功能函数
+            --MESSAGE "复制"
 
         ON ACTION FIRST
             CALL i010_fetch('F')
@@ -672,38 +672,27 @@ FUNCTION i888_delete()
     
 END FUNCTION
 
-{
+
 --========================
 --  复制功能函数
 --========================
 FUNCTION i888_copy()
 
-    -- 确保没有遗留的 FOR UPDATE 游标
-    --CLOSE i888_cl
-
-
     DEFINE l_ok LIKE type_file.num5
-    --DEFINE l_old_azb01 LIKE azb_file.azb01
+    DEFINE g_debug STRING
 
-    --清变量 + 清画面
-    --INITIALIZE g_azb.* TO NULL 
-    --CLEAR FORM 
-
-     --前提：画面上必须已经有一笔资
-    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN 
-        MESSAGE "请先查询一笔资料再复制"
-        RETURN 
+    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN
+        MESSAGE "请先查询一笔资料，再执行复制！"
+        RETURN
     END IF
 
     --清掉不能复制的栏位
-    LET g_azb.azb01 = NULL  --  主键
-    LET g_azb.azbdate = TODAY   --新建立日
-    LET g_azb.azbuser = g_user  --新建立人
+    LET g_azb.azb01   = NULL
+    LET g_azb.azbdate = TODAY
+    LET g_azb.azbuser = g_user
 
-    --画面同步
     DISPLAY BY NAME g_azb.*
 
-    --输入新主键 + 调整资料
     INPUT BY NAME
         g_azb.azb01,
         g_azb.azboriu,
@@ -711,77 +700,57 @@ FUNCTION i888_copy()
         g_azb.azbacti,
         g_azb.azbgrup
         BEFORE INPUT
-            MESSAGE "复制资料：请输入新编号"
+            MESSAGE "复制资料：请输入新人员编号"
     END INPUT
 
-    --主键检查
-    IF NOT i888_chk_pk() THEN 
-        MESSAGE "主键重复,复制取消！"
-        RETURN 
+    IF NOT i888_chk_pk() THEN
+        MESSAGE "主键检查失败，复制取消！"
+        RETURN
     END IF
 
-    --资料检查
-    IF NOT i888_chk_insert() THEN 
-        MESSAGE "资料检查失败,复制取消"
-        RETURN 
-    END IF 
+    IF NOT i888_chk_insert() THEN
+        MESSAGE "资料检查失败，复制取消！"
+        RETURN
+    END IF
 
-    --确认是否复制
-    LET l_ok = cl_confirm("是否复制此笔资料？")
-
-    IF l_ok <> 1 THEN 
+    LET l_ok = cl_confirm("是否确认复制此笔资料？")
+    IF l_ok <> 1 THEN
         MESSAGE "已取消复制"
-        RETURN 
+        RETURN
     END IF
 
 
     BEGIN WORK
+    WHENEVER ERROR CALL cl_err_msg_log
 
-    IF NOT i888_do_insert() THEN
+    INSERT INTO azb_file
+        (azb01, azboriu, azb02, azborig, azb06, azbdate, azbuser)
+    VALUES
+        (g_azb.azb01,
+         g_azb.azboriu,
+         g_azb.azb02,
+         g_azb.azborig,
+         g_azb.azb06,
+         g_azb.azbdate,
+         g_user)
+
+    WHENEVER ERROR STOP
+
+    IF SQLCA.SQLCODE <> 0 THEN
+        MESSAGE "复制新增失败，SQLCODE = " || SQLCA.SQLCODE
         ROLLBACK WORK
         RETURN
     END IF
 
     COMMIT WORK
+
     MESSAGE "复制成功！"
 
-END FUNCTION    --复制功能函数结束
-
-
---实现复制之后插入函数
-FUNCTION i888_do_insert()
-
-    DEFINE l_sql STRING
-    DEFINE l_ret LIKE type_file.num5
-
-    WHENEVER ERROR CALL cl_err_msg_log
-
-    LET g_sql =
-        "INSERT INTO azb_file (" ||
-        "azb01, azboriu, azb02, azborig, azb06, azbdate, azbuser" ||
-        ") VALUES (?, ?, ?, ?, ?, ?, ?)"
-
-    PREPARE s_ins FROM g_sql
-
-    EXECUTE s_ins USING
-        g_azb.azb01,
-        g_azb.azboriu,
-        g_azb.azb02,
-        g_azb.azbacti,
-        g_azb.azbgrup,
-        g_azb.azbdate,
-        g_user
-
-    IF SQLCA.SQLCODE <> 0 THEN
-        MESSAGE "复制新增失败！"
-        RETURN FALSE
-    END IF
-
-    RETURN TRUE
+    CALL i888_show()
 
 END FUNCTION
 
-}
+
 
 
 FUNCTION i888_show()
