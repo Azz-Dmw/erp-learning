@@ -129,7 +129,8 @@ FUNCTION i010_menu()
         --复制功能按钮
         ON ACTION reproduce
             --LET g_action_choice="reproduce"
-            CALL i888_copy()    --调佣复制功能函数
+            --CALL i888_copy()    --调佣复制功能函数
+            MESSAGE "复制"
 
         ON ACTION FIRST
             CALL i010_fetch('F')
@@ -671,7 +672,7 @@ FUNCTION i888_delete()
     
 END FUNCTION
 
-
+{
 --========================
 --  复制功能函数
 --========================
@@ -780,7 +781,7 @@ FUNCTION i888_do_insert()
 
 END FUNCTION
 
-
+}
 
 
 FUNCTION i888_show()
