@@ -50,109 +50,108 @@ MAIN
 
     DEFINE p_row, p_col LIKE type_file.num5  --定义窗口显示的位置，p_row：第几行，p_col：第几列
 
-    OPTIONS INPUT NO WRAP   --输入超过栏位 不自动换行
-    DEFER INTERRUPT         --延迟 Ctrl+C / 中断，防止用户在关键操作时把程序杀掉，属于保护机制
+    -- 设置输入选项：禁止自动换行，提高用户体验
+    OPTIONS INPUT NO WRAP
+    
+    -- 延迟 Ctrl+C 中断：防止用户在关键操作中误杀程序，保护数据完整性
+    DEFER INTERRUPT
 
-    IF NOT cl_user() THEN   --判断使用者是否有权限，没权限 → 直接结束程序
+    -- ★ 第一步：权限检查 ★
+    -- 调用全局权限检查函数，无权限则直接退出
+    IF NOT cl_user() THEN
         EXIT PROGRAM
     END IF
 
-    --主键重复、NOT NULL 违反、触发器错误
-    --全局错误处理模式
-    --全局只声明一次即可
-    WHENEVER ERROR CALL cl_err_msg_log  --只要程序发生 SQL / Runtime Error，👉 自动调用 cl_err_msg_log 
+    -- ★ 第二步：全局错误处理 ★
+    -- 捕获所有 SQL 错误(主键违反、NULL约束等) 和运行时错误
+    -- 自动调用错误日志函数进行处理和记录，整个程序生命周期内仅需声明一次
+    WHENEVER ERROR CALL cl_err_msg_log
 
-    IF NOT cl_setup("A00") THEN     --A00：模块代号，初始化：语言、画面风格、环境参数
+    -- ★ 第三步：环境初始化 ★
+    -- 初始化语言、窗口风格、环境参数等（A00 为此模块的代码）
+    IF NOT cl_setup("A00") THEN
         EXIT PROGRAM
     END IF
 
-    --记录开始使用
-    CALL cl_used(g_prog, g_time, 1) RETURNING g_time    --记录「程序开始使用」，1 = 开始，2 = 结束，常用于系统审计 / 使用统计
+    -- ★ 第四步：使用记录 ★
+    -- 记录程序开始使用时间，用于系统审计和使用统计分析
+    -- 参数：程序名, 时间戳, 1(开始) 或 2(结束)
+    CALL cl_used(g_prog, g_time, 1) RETURNING g_time
 
-    INITIALIZE g_azb.* TO NULL  --清空记录变量，相当于所有字段 = 空
+    -- 初始化全局人员资料记录，清空所有字段
+    INITIALIZE g_azb.* TO NULL
 
+    -- 准备 FOR UPDATE SQL 语句，用于修改和删除时的行级锁定
+    -- NOWAIT：如果资料已被其他用户锁定，立即报错（不等待释放）
     LET g_forupd_sql =
-        "SELECT * FROM azb_file WHERE rowid = ? FOR UPDATE NOWAIT"  --查询一笔资料，并且 锁住，NOWAIT：有人锁 → 直接报错
+        "SELECT * FROM azb_file WHERE rowid = ? FOR UPDATE NOWAIT"
 
-    DECLARE i888_cl CURSOR FROM g_forupd_sql    --为 FOR UPDATE 准备游标，只有 DECLARE，真正执行是在 OPEN / FETCH
+    -- 声明游标但不执行：真正的 OPEN 和 FETCH 操作在修改/删除函数中进行
+    DECLARE i888_cl CURSOR FROM g_forupd_sql
 
-    --设定窗口位置
+    -- ★ 第五步：打开主窗口 ★
+    -- 设定窗口显示位置
     LET p_row = 5
     LET p_col = 10
 
-        {打开一个窗口 i010_w
-        使用 .per 表单套用系统统一风格}
+    -- 打开主窗口，使用指定的表单文件和系统统一风格
     OPEN WINDOW i010_w AT p_row, p_col
         WITH FORM "aoo/42f/aooi888"
         ATTRIBUTE (STYLE = g_win_style CLIPPED)
 
-    --UI 初始化，统一处理：快捷键、颜色、状态列
+    -- 初始化 UI 样式：快捷键、颜色、状态列等
     CALL cl_ui_init()
 
-    --主菜单
-    --所有功能都会从这里开始
+    -- ★ 第六步：显示主菜单 ★
+    -- 所有功能入口都从这个菜单开始
     LET g_action_choice = ""
-    CALL i010_menu()     -- 空壳菜单
+    CALL i010_menu()
 
-    --关闭窗口
+    -- ★ 第七步：清理资源 ★
+    -- 关闭主窗口
     CLOSE WINDOW i010_w
 
-    --记录结束使用
+    -- 记录程序结束使用时间
     CALL cl_used(g_prog, g_time, 2) RETURNING g_time
     
 END MAIN
 
 
-# =========================
-# 功能菜单总览
-# =========================
+# ====================================
+# 主菜单函数 - 功能导航和流程控制
+# ====================================
+# 功能说明：
+#   - 定义所有主要功能按钮（新增、查询、修改、删除、复制）
+#   - 管理菜单事件和用户交互
+#   - 控制导航条状态和闲置超时
 
 FUNCTION i010_menu()
 
     MENU ""
 
-    --各功能按钮
-        BEFORE MENU     --预设第一笔、上笔、指定笔、下笔、末一笔五个功能关闭
+        -- 菜单初始化：设置导航条(首/上/下/末)按钮的启用状态
+        BEFORE MENU
             CALL cl_navigator_setting(g_curs_index, g_row_count)
 
-        --新增功能按钮
+        -- 【新增】按钮：添加新的人员记录
         ON ACTION INSERT
-            CALL i888_insert()   --调用新增功能函数
+            CALL i888_insert()
             
-        --查询功能按钮
+        -- 【查询】按钮：按条件查询人员记录
         ON ACTION query
-             CALL i888_query()   --调用查询功能函数
+             CALL i888_query()
 
-        --修改功能按钮
+        -- 【修改】按钮：修改已查询的人员记录
         ON ACTION modify
-            CALL i888_modify()    --调用修改功能函数
+            CALL i888_modify()
 
-        --删除功能按钮
+        -- 【删除】按钮：删除指定的人员记录
         ON ACTION DELETE
-            CALL i888_delete()    --调用删除功能函数
+            CALL i888_delete()
 
-        --复制功能按钮
+        -- 【复制】按钮：复制已查询的人员记录为新记录
         ON ACTION reproduce
-            --LET g_action_choice="reproduce"
-            CALL i888_copy()    --调佣复制功能函数
-            --MESSAGE "复制"
-
-        --第一笔功能按钮
-        ON ACTION FIRST
-            CALL i010_fetch('F')
-
-        --说明功能按钮
-        ON ACTION help
-            CALL cl_show_help()     --调用说明功能函数
-
-        --退出功能按钮
-        ON ACTION exit
-            EXIT MENU
-
-        --程式闲置管控
-        ON IDLE g_idle_seconds
-            CALL cl_on_idle()   --用户闲置时间达到设定时，可强制结束程式或者发送讯息等
-            CONTINUE MENU
+            CALL i888_copy()
 
 
     END MENU
@@ -162,46 +161,43 @@ END FUNCTION
 
 
 --========================
---  新增功能函数
+--  新增人员记录函数
+--  功能说明：获取用户输入 → 验证数据 → 用户确认 → 插入数据库
 --========================
 
 FUNCTION i888_insert()  
 
     DEFINE l_ok LIKE type_file.num5
 
-    --初始化变量
+    -- 清空变量（内存中的数据）
     INITIALIZE g_azb.* TO NULL 
 
-    --清画面
+    -- 清空显示界面（屏幕上的数据）
     CLEAR FORM 
 
-    --注意：INITIALIZE与CLEAR FORM作用和区别
-    --INITIALIZE：清变量，INITIALIZE g_azb.* TO NULL，画面不会自动清除。
-    --CLEAR FORM：清画面,变量还在，只是画面清理了
-
-    --输入资料
+    -- 获取用户输入的新人员资料
     INPUT BY NAME g_azb.*
         BEFORE INPUT 
             MESSAGE "请输入新增资料" 
     END INPUT 
 
-    LET g_azb.AZBDATE = TODAY   --赋值g_azb.AZBDATE日期为今天
+    -- 设置记录日期为当前日期
+    LET g_azb.AZBDATE = TODAY
 
-
-    --主键检查
+    -- ▼ 第一步：数据验证 ▼
+    -- 验证 1：检查主键是否已存在
     IF NOT i888_chk_pk() THEN 
         MESSAGE "主键重复，新增取消！"
         RETURN 
     END IF 
 
-    --整体资料检查
+    -- 验证 2：检查必填项和业务规则
     IF NOT i888_chk_insert() THEN 
         MESSAGE "资料检查失败，新增取消"
         RETURN
     END IF 
 
-
-    --确认
+    -- ▼ 第二步：用户二次确认 ▼
     LET l_ok = cl_confirm("是否确认新增此笔资料？")
 
     IF l_ok <> 1 THEN 
@@ -209,13 +205,11 @@ FUNCTION i888_insert()
         RETURN 
     END IF 
 
-    -- === 正式新增到数据库 ===
-
-    --开事务
+    -- ▼ 第三步：提交数据库 ▼
+    -- 开启事务，确保数据一致性
     BEGIN WORK 
-    
 
-    --=== 显示 INSERT SQL ===
+    -- 【调试】显示即将执行的 INSERT 语句和参数值
     LET g_sql = 
             "INSERT INTO azb_file (" ||
         "azb01, azboriu, azb02, azborig, azb06, azbdate, azbuser" ||
@@ -230,39 +224,42 @@ FUNCTION i888_insert()
     DISPLAY "PARAM azbdate = [" || g_azb.azbdate || "]"
     DISPLAY "PARAM azbuser = [" || g_user || "]"
 
+    -- 预编译 SQL 语句（提高执行效率，防止 SQL 注入）
     PREPARE s_ins FROM g_sql
 
-    --执行insert新增SQL
+    -- 执行 INSERT 语句，将新人员记录插入数据库
     EXECUTE s_ins USING 
-            g_azb.azb01,    --人员编号
-            g_azb.azboriu,  --姓名
-            g_azb.azb02,    --密码
-            g_azb.azborig,  --部门编号
-            g_azb.azb06,    --金额
+            g_azb.azb01,    -- 人员编号（主键）
+            g_azb.azboriu,  -- 人员姓名
+            g_azb.azb02,    -- 登录密码
+            g_azb.azborig,  -- 所属部门
+            g_azb.azb06,    -- 授权金额
             g_azb.azbdate,  --最近更改日
             g_user
 
-    --=== 显示影响行数 ===
-    DISPLAY  "INSERT ROW COUNT = " || SQLCA.SQLERRD[3]
+    -- 检查执行结果：影响行数
+    DISPLAY  "INSERT 影响行数 ： " || SQLCA.SQLERRD[3]
 
-
+    -- ★ 错误处理 ★
     IF SQLCA.SQLCODE <> 0 THEN
         MESSAGE "新增失败，SQLCODE = " || SQLCA.SQLCODE
-        ROLLBACK WORK       --注意：ROLLBACK后面一定要加WORK
+        ROLLBACK WORK       -- 回滚事务，取消所有操作
         RETURN  
     END IF
 
+    -- 验证影响行数是否正确（应该为1）
     IF SQLCA.SQLERRD[3] <> 1 THEN
         MESSAGE "新增影响行数异常 = " || SQLCA.SQLERRD[3]
         ROLLBACK WORK
         RETURN
     END IF
 
-    COMMIT WORK             --注意：COMMIT后面一定要加WORK
+    -- 事务提交：确认所有操作，保存到数据库
+    COMMIT WORK
     
     MESSAGE "新增成功"
 
-    --显示新增后的资料
+    -- 显示新增后的完整人员资料
     CALL i888_show() 
     
     
@@ -270,85 +267,103 @@ END FUNCTION    -- 新增功能函数结束
 
 
 
---检查主键是否合法
+--====================================
+-- 主键验证函数 - 检查编号唯一性
+--====================================
+-- 返回值：TRUE(主键合法) / FALSE(主键重复或为空)
 FUNCTION i888_chk_pk() 
 
+    DEFINE l_cnt LIKE type_file.num10  -- 计数器：用于统计主键重复数
 
-    DEFINE l_cnt LIKE type_file.num10
-
-
-    --主键不能为空
+    -- 检查 1：主键不能为空
     IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN 
         MESSAGE "主键不能为空！"
         RETURN FALSE 
     END IF 
 
-    --检查主键是否存在
+    -- 检查 2：查询数据库中是否已存在该编号
     SELECT COUNT(*) 
     INTO l_cnt 
     FROM azb_file
     WHERE TRIM(azb01) = TRIM(g_azb.azb01)
 
+    -- 如果计数大于0，表示编号已存在
     IF l_cnt > 0 THEN 
         MESSAGE "编号已存在无法新增"
         RETURN FALSE
     END IF 
 
-    --检查通过
+    -- 所有检查都通过
     RETURN TRUE 
 
 END FUNCTION
 
 
 
-        -- 这里以后可以放：
-        -- 必填栏位检查
-        -- 逻辑检查（日期大小、状态组合等）
+-- ====================================
+-- 新增数据验证函数 - 检查业务规则
+-- ====================================
+-- 验证内容：
+--   - 必填项检查
+--   - 业务规则检查（可扩展：日期大小、状态组合等）
+-- 返回值：TRUE(验证成功) / FALSE(验证失败)
 FUNCTION i888_chk_insert()
 
+        -- 必填项 1：人员名称不能为空
         IF g_azb.azboriu IS NULL OR g_azb.azboriu CLIPPED = " " THEN 
             MESSAGE "人员名称不能为空"
             RETURN FALSE 
         END IF 
-
+        
+        -- 其他验证项可在此处添加
+        -- 例如：日期范围检查、金额合理性检查、部门代码有效性检查等
+        
         RETURN TRUE 
         
 END FUNCTION    
 
 
 
---========================
--- 查询功能函数
---========================
-
+-- ====================================
+-- 查询人员记录函数 - 支持多条件组合查询
+-- ====================================
+-- 功能说明：
+--   1. 获取用户输入的查询条件
+--   2. 动态拼接 SQL WHERE 子句
+--   3. 执行查询并显示结果
+--   4. 设置查询成功标志（用于修改/删除的前置条件）
+-- 
+-- 查询条件支持：人员编号、姓名、密码、部门、金额、日期等
+-- 
+-- 数据流向：输入条件 → SQL拼接 → 查询执行 → 显示结果 → 设置标志
 FUNCTION i888_query()
 
-    DEFINE l_where STRING 
-    DEFINE l_sql STRING 
+    DEFINE l_where STRING  -- 存放动态 WHERE 条件
+    DEFINE l_sql STRING    -- 存放完整的 SELECT 语句
 
-    --重置查询状态
+    -- 重置查询成功标志
     LET g_query_ok = 0
 
-    --清变量 + 清画面
+    -- 清空上一次查询的数据和显示界面
     INITIALIZE g_azb.* TO NULL 
     CLEAR FORM 
 
-    --输入查询条件（这里只用azb01查询）
+    -- 获取用户输入的查询条件（支持多字段组合查询）
     INPUT BY NAME 
-        g_azb.azb01,    --人员编号
-        g_azb.azboriu,  --姓名
-        g_azb.azb02,    --密码
-        g_azb.azborig,  --部门编号
-        g_azb.azb06,    --金额
-        g_azb.azbdate  --最近更改日
+        g_azb.azb01,    -- 人员编号
+        g_azb.azboriu,  -- 人员姓名
+        g_azb.azb02,    -- 密码
+        g_azb.azborig,  -- 部门编号
+        g_azb.azb06,    -- 授权金额
+        g_azb.azbdate   -- 修改日期
         BEFORE INPUT 
             MESSAGE "请输入查询条件"
     END INPUT 
 
     DISPLAY "DEBUG INPUT azb01=[" || g_azb.azb01 || "]"
 
-    
-    --SQL拼接where条件
+    -- ▼ 动态 SQL 拼接阶段 ▼
+    -- 初始化 WHERE 条件（1=1 总是真，作为基础条件）
     LET l_where = " WHERE 1 = 1 "
     LET l_sql   = "SELECT rowid,A.* FROM azb_file A "
 
@@ -356,102 +371,119 @@ FUNCTION i888_query()
     DISPLAY "DEBUG INPUT l_sql=[" || l_sql || "]"
     DISPLAY "DEBUG2 BEFORE IF azb01=[" || g_azb.azb01 || "]"
 
+    -- ▼ 条件拼接：如果字段有值，则加入 WHERE 条件 ▼
     
-    --人员编号
+    -- 条件 1：人员编号（精确匹配）
     IF g_azb.azb01 IS NOT NULL AND g_azb.azb01 CLIPPED <> " " THEN 
         LET l_where = l_where || " AND TRIM(azb01) = '" || g_azb.azb01 CLIPPED || "'"
     END IF 
     
-    --姓名
+    -- 条件 2：人员姓名（模糊匹配，支持部分名字搜索）
     IF g_azb.azboriu IS NOT NULL AND g_azb.azboriu CLIPPED <> " " THEN 
         LET l_where = l_where ||
             " AND azboriu like '%" || g_azb.azboriu CLIPPED || "%'"
     END IF 
 
-    --密码
+    -- 条件 3：密码（精确匹配）
     IF g_azb.azb02 IS NOT NULL AND g_azb.azb02 CLIPPED <> " " THEN 
         LET l_where = l_where ||
             " AND azb02 = '" || g_azb.azb02 CLIPPED || "'"
     END IF 
 
-    --部门编号
+    -- 条件 4：部门编号（精确匹配）
     IF g_azb.azborig IS NOT NULL AND g_azb.azborig CLIPPED <> " " THEN 
         LET l_where = l_where ||
             " AND azborig = '" || g_azb.azborig CLIPPED || "'"
     END IF 
 
-    --金额
+    -- 条件 5：授权金额（精确匹配）
     IF g_azb.azb06 IS NOT NULL AND g_azb.azb06 CLIPPED <> " " THEN 
         LET l_where = l_where ||
             " AND azb06 = '" || g_azb.azb06 CLIPPED || "'"
     END IF
 
-    --最近更改日
+    -- 条件 6：修改日期（精确匹配）
     IF g_azb.azbdate IS NOT NULL AND g_azb.azbdate CLIPPED <> " " THEN 
         LET l_where = l_where ||
             " AND azbdate = '" || g_azb.azbdate CLIPPED || "'"
     END IF
 
-    --拼接完整SQL
+    -- 拼接完整 SQL 语句，按人员编号排序
     LET l_sql = l_sql || l_where || " ORDER BY azb01"
                                                     
-    --★★★ Debug：显示最终 SQL ★★★
+    -- 【调试输出】显示最终生成的 SQL 语句
     DISPLAY "DEBUG SQL => " || l_sql
 
-    --执行查询
+    -- ▼ 查询执行阶段 ▼
+    -- 预编译并准备游标
     PREPARE s_qry FROM l_sql
     DECLARE c_qry CURSOR FOR s_qry
     OPEN c_qry
 
+    -- 取出查询结果的第一行
     FETCH c_qry INTO g_azb_rowid,g_azb.*
     
+    -- 检查是否查到数据
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "查无资料"
         CLOSE c_qry
         RETURN
     END IF 
 
-    --显示结果
+    -- ▼ 查询成功，显示结果 ▼
+    -- 将查询结果显示在界面上
     DISPLAY BY NAME g_azb.*
 
-    --查到资料才允许修改
+    -- 设置查询成功标志，允许后续的修改和删除操作
     LET g_query_ok = 1
 
     MESSAGE "查询成功！"
 
+    -- 关闭游标
     CLOSE c_qry
 
 END FUNCTION    -- 查询功能函数结束
 
 
 
---========================
---  修改功能函数(查询之后才能进行修改)
---========================
+-- ====================================
+-- 修改人员记录函数
+-- ====================================
+-- 前置条件：必须先执行 i888_query() 函数查询数据
+-- 功能说明：
+--   1. 检查是否已查询数据
+--   2. 对数据行进行锁定（防止并发修改）
+--   3. 允许用户修改数据（主键除外）
+--   4. 验证修改后的数据
+--   5. 用户确认后提交数据库
+--
+-- 数据流向：查询 → 行锁 → 编辑 → 验证 → 确认 → UPDATE → 提交
 FUNCTION i888_modify()
 
     DEFINE l_ok LIKE type_file.num5
+    DEFINE l_today DATE  -- 存放当前修改日期
 
-    --先将最近修改日的时间赋值
-    DEFINE l_today DATE
-
-    --必须先查询
+    -- ▼ 第一步：前置条件检查 ▼
+    -- 必须先执行查询，确保 g_query_ok = 1
     IF g_query_ok <> 1 THEN 
         MESSAGE "请先查询资料,再进行修改！"
         RETURN 
     END IF 
 
-    --最近修改日字段赋值为当天
+    -- 设置当前日期为修改日期
     LET l_today = TODAY
 
-    --开事务
+    -- ▼ 第二步：行级锁定（并发控制） ▼
+    -- 开启事务，确保修改操作的原子性
     BEGIN WORK 
 
-    --锁资料
+    -- 打开游标并使用 FOR UPDATE 锁定该行数据
+    -- 防止其他用户同时修改同一条记录
     OPEN i888_cl USING g_azb_rowid
     
     FETCH i888_cl INTO g_azb.*
 
+    -- 如果无法锁定（数据被其他用户占用），则报错
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "资料被其他人使用中，无法修改！"
         CLOSE i888_cl
@@ -459,23 +491,21 @@ FUNCTION i888_modify()
         RETURN
     END IF 
 
-    --还原查询资料
+    -- 显示锁定后的原始数据
     DISPLAY BY NAME g_azb.*
 
-
-    --进入修改输入（主键不可修改）
+    -- ▼ 第三步：用户修改输入（主键不可修改） ▼
     INPUT BY NAME 
-        g_azb.azboriu,  --姓名
-        g_azb.azb02,    --密码
-        g_azb.azborig,  --部门编号
-        g_azb.azb06,    --金额
-        g_azb.azbdate  --最近更改日
+        g_azb.azboriu,  -- 人员姓名
+        g_azb.azb02,    -- 登录密码
+        g_azb.azborig,  -- 所属部门
+        g_azb.azb06,    -- 授权金额
+        g_azb.azbdate   -- 最近更改日期
         BEFORE INPUT 
             MESSAGE "请修改资料（主键不可修改）"
     END INPUT 
 
-
-    --资料检查
+    -- ▼ 第四步：修改数据验证 ▼
     IF NOT i888_chk_modify() THEN 
         MESSAGE "资料检查失败,修改取消"
         CLOSE i888_cl
@@ -483,7 +513,7 @@ FUNCTION i888_modify()
         RETURN
     END IF 
 
-    --确认
+    -- ▼ 第五步：用户确认修改 ▼
     LET l_ok = cl_confirm("是否确认修改此笔资料？")
 
     IF l_ok <> 1 THEN 
@@ -493,7 +523,8 @@ FUNCTION i888_modify()
         RETURN 
     END IF 
 
-    --正式执行update更新
+    -- ▼ 第六步：执行 UPDATE 语句 ▼
+    -- 构建 UPDATE SQL 语句
     LET g_sql =
         "UPDATE azb_file SET " ||
         "azboriu = ?, " ||
@@ -506,20 +537,23 @@ FUNCTION i888_modify()
 
     DISPLAY "UPDATE SQL => " || g_sql
 
+    -- 预编译 SQL 语句
     PREPARE s_upd FROM g_sql
 
+    -- 执行 UPDATE 语句，提交修改
     EXECUTE s_upd USING
-        g_azb.azboriu,
-        g_azb.azb02,
-        g_azb.azborig,
-        g_azb.azb06,
-        g_user,
-        l_today,
-        g_azb_rowid
+        g_azb.azboriu,  -- 更新后的姓名
+        g_azb.azb02,    -- 更新后的密码
+        g_azb.azborig,  -- 更新后的部门
+        g_azb.azb06,    -- 更新后的金额
+        g_user,         -- 修改人
+        l_today,        -- 修改时间
+        g_azb_rowid     -- 定位条件
 
-    --输出UPDATE影响行数
+    -- 显示本次 UPDATE 影响的行数
     DISPLAY "update更新影响行数 ： " || SQLCA.SQLERRD[3]
 
+    -- ★ 错误处理 ★
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "修改失败,SQLCODE = " || SQLCA.SQLCODE
         CLOSE i888_cl
@@ -527,79 +561,97 @@ FUNCTION i888_modify()
         RETURN 
     END IF 
 
+    -- 释放行锁并提交事务
     CLOSE i888_cl
     COMMIT WORK 
 
     MESSAGE "修改成功!"
 
-    --显示修改后资料
-    --CALL i888_show()
+    -- 修改后不自动刷新显示（可取消注释来启用自动刷新）
+    -- CALL i888_show()
 
 END FUNCTION    -- 修改功能函数结束
 
 
-    
---========================
--- 修改资料 检查函数
---========================
-
+-- ====================================
+-- 修改数据验证函数 - 检查业务规则
+-- ====================================
+-- 返回值：TRUE(验证成功) / FALSE(验证失败)
 FUNCTION i888_chk_modify()
 
+    -- 必填项 1：人员名称不能为空
     IF g_azb.azboriu IS NULL OR g_azb.azboriu CLIPPED = " " THEN 
         MESSAGE "人员名称不能为空！"
         RETURN FALSE 
     END IF
 
+    -- 其他验证可在此处添加
+    
     RETURN TRUE 
 
-END FUNCTION    --修改资料检查函数结束
+END FUNCTION    -- 修改数据检查函数结束
 
 
 
---========================
---  删除功能函数
---========================
+-- ====================================
+-- 删除人员记录函数
+-- ====================================
+-- 功能说明：
+--   1. 获取用户输入的删除条件（人员编号）
+--   2. 查询并显示将要删除的数据（二次确认）
+--   3. 对数据行进行锁定（防止并发删除）
+--   4. 执行 DELETE 语句删除数据
+--   5. 清空显示界面
+--
+-- 特点：需要二次确认，删除后无法恢复
+-- 
+-- 数据流向：输入编号 → 查询显示 → 用户确认 → 行锁 → DELETE → 清空显示
 FUNCTION i888_delete()
 
     DEFINE l_ok LIKE type_file.num5
     DEFINE l_sql STRING 
 
-    --清变量 + 清画面
+    -- ▼ 第一步：清空显示并获取删除条件 ▼
+    -- 清空上一次的数据和显示界面
     INITIALIZE g_azb.* TO NULL 
     CLEAR FORM 
 
-    --输入要删除的主键
+    -- 获取用户输入的人员编号（删除条件）
     INPUT BY NAME g_azb.azb01
         BEFORE INPUT 
             MESSAGE "请输入要删除的人员编号"
     END INPUT 
 
-    --主键检查
+    -- 验证人员编号不能为空
     IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN 
         MESSAGE "人员编号不能为空！"
         RETURN 
     END IF 
 
-    --先取rowid
+    -- ▼ 第二步：查询将要删除的数据 ▼
+    -- 根据编号查找 rowid（用于定位删除）
     SELECT ROWID
         INTO g_azb_rowid
         FROM azb_file
         WHERE TRIM(azb01) = TRIM(g_azb.azb01)
 
+    -- 如果未找到数据
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "资料不存在,无法删除！"
         RETURN 
     END IF 
 
+    -- 查询完整的人员记录
     SELECT *
         INTO g_azb.*
         FROM azb_file
         WHERE ROWID = g_azb_rowid
 
-    --显示将要删除的资料
+    -- 显示将要删除的数据，让用户确认
     DISPLAY BY NAME g_azb.*
 
-    --二次确认
+    -- ▼ 第三步：用户二次确认 ▼
+    -- 删除操作不可逆，需要用户二次确认
     LET l_ok = cl_confirm("确认要删除此笔资料吗？(删除后无法恢复！)")
 
     IF l_ok <> 1 THEN 
@@ -607,15 +659,15 @@ FUNCTION i888_delete()
         RETURN 
     END IF 
 
-    
-    --=== 开始删除 ===
-
+    -- ▼ 第四步：删除数据库记录 ▼
+    -- 开启事务，确保删除的原子性
     BEGIN WORK 
 
-    --锁资料
+    -- 对数据行进行锁定（防止其他用户同时删除同一条记录）
     OPEN i888_cl USING g_azb_rowid
     FETCH i888_cl INTO g_azb.*
 
+    -- 如果无法锁定（数据被其他用户占用）
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "资料被其他人使用中,无法删除！"
         CLOSE i888_cl
@@ -623,19 +675,20 @@ FUNCTION i888_delete()
         RETURN 
     END IF
 
-    --删除SQL
+    -- 构建 DELETE SQL 语句
     LET l_sql = "DELETE FROM azb_file WHERE rowid = ?"
 
     DISPLAY "DELETE SQL => " || l_sql
     DISPLAY "ROWID = [" || g_azb_rowid || "]"
 
-   --执行删除
+    -- 执行删除操作
     DELETE FROM azb_file
         WHERE ROWID = g_azb_rowid
 
-    --显示影响行数
+    -- 显示本次 DELETE 影响的行数
     DISPLAY "DELETE ROW COUNT = " || SQLCA.SQLERRD[3]
 
+    -- ★ 错误处理 ★
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "删除失败,SQLCODE = " || SQLCA.SQLCODE
         CLOSE i888_cl
@@ -643,82 +696,101 @@ FUNCTION i888_delete()
         RETURN 
     END IF 
 
+    -- 释放行锁并提交事务
     CLOSE i888_cl
     COMMIT WORK 
 
     MESSAGE "删除成功！"
 
-    --清画面
+    -- ▼ 第五步：清空显示 ▼
+    -- 删除成功后清空变量和显示界面
     INITIALIZE g_azb.* TO NULL 
     CLEAR FORM 
 
-    
-END FUNCTION
+END FUNCTION    -- 删除功能函数结束
 
 
---========================
---  复制功能函数
---========================
+-- ====================================
+-- 复制人员记录函数
+-- ====================================
+-- 功能说明：
+--   1. 检查是否已查询数据
+--   2. 清除主键和自动字段，保留其他数据
+--   3. 获取用户输入新的人员编号
+--   4. 验证新编号的唯一性
+--   5. 作为新记录插入数据库
+--
+-- 应用场景：批量创建相似配置的人员记录
 FUNCTION i888_copy()
 
     DEFINE l_ok LIKE type_file.num5
     DEFINE g_debug STRING
 
+    -- 检查是否已查询数据
     IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN
         MESSAGE "请先查询一笔资料，再执行复制！"
         RETURN
     END IF
 
-    --清掉不能复制的栏位
+    -- ▼ 第一步：清除主键和自动字段，保留其他数据 ▼
+    -- 清空主键，让用户输入新编号
     LET g_azb.azb01   = NULL
+    -- 设置日期为当前日期
     LET g_azb.azbdate = TODAY
+    -- 设置操作人为当前登录用户
     LET g_azb.azbuser = g_user
 
+    -- 显示即将复制的数据
     DISPLAY BY NAME g_azb.*
 
+    -- ▼ 第二步：获取新的人员编号 ▼
     INPUT BY NAME
-        g_azb.azb01,
-        g_azb.azboriu,
-        g_azb.azb02,
-        g_azb.azbacti,
-        g_azb.azbgrup
+        g_azb.azb01,      -- 新人员编号（必填，需唯一）
+        g_azb.azboriu,    -- 人员姓名（可编辑）
+        g_azb.azb02,      -- 密码（可编辑）
+        g_azb.azbacti,    -- 其他字段（可编辑）
+        g_azb.azbgrup     -- 其他字段（可编辑）
         BEFORE INPUT
             MESSAGE "复制资料：请输入新人员编号"
     END INPUT
 
+    -- ▼ 第三步：数据验证 ▼
+    -- 检查新编号是否已存在
     IF NOT i888_chk_pk() THEN
         MESSAGE "主键检查失败，复制取消！"
         RETURN
     END IF
 
+    -- 检查必填项和业务规则
     IF NOT i888_chk_insert() THEN
         MESSAGE "资料检查失败，复制取消！"
         RETURN
     END IF
 
+    -- ▼ 第四步：用户确认 ▼
     LET l_ok = cl_confirm("是否确认复制此笔资料？")
     IF l_ok <> 1 THEN
         MESSAGE "已取消复制"
         RETURN
     END IF
 
-    
-    --=== 开始将复制的数据插入数据库 ===
-
+    -- ▼ 第五步：插入新记录到数据库 ▼
     BEGIN WORK
 
+    -- 执行 INSERT 语句，将复制的记录作为新记录插入
     INSERT INTO azb_file
         (azb01, azboriu, azb02, azborig, azb06, azbdate, azbuser)
     VALUES
-        (g_azb.azb01,
-         g_azb.azboriu,
-         g_azb.azb02,
-         g_azb.azborig,
-         g_azb.azb06,
-         g_azb.azbdate,
-         g_user)
+        (g_azb.azb01,     -- 新的人员编号
+         g_azb.azboriu,   -- 人员姓名
+         g_azb.azb02,     -- 密码
+         g_azb.azborig,   -- 部门编号
+         g_azb.azb06,     -- 授权金额
+         g_azb.azbdate,   -- 创建日期
+         g_user)          -- 创建人
 
 
+    -- ★ 错误处理 ★
     IF SQLCA.SQLCODE <> 0 THEN
         MESSAGE "复制新增失败，SQLCODE = " || SQLCA.SQLCODE
         ROLLBACK WORK
@@ -729,35 +801,51 @@ FUNCTION i888_copy()
 
     MESSAGE "复制成功！"
 
+    -- 显示复制成功后的新记录
     CALL i888_show()
 
-END FUNCTION
+END FUNCTION    -- 复制功能函数结束
 
 
-
-
+-- ====================================
+-- 显示记录函数 - 在表单上显示数据
+-- ====================================
+-- 功能说明：将 g_azb 记录中的数据显示在界面的输入框上
+-- 参数说明：无（直接使用全局变量 g_azb）
 FUNCTION i888_show()
 
-    DISPLAY BY NAME g_azb.*  --BY NAME 显示在画面档 或者DISPLAY g_azb.* TO FORM *
-    --DISPLAY g_azb.*             --显示在Linux终端
+    -- 使用 BY NAME 方式显示：根据变量名匹配表单控件
+    -- 自动将 g_azb.* 中的数据显示到对应的表单字段上
+    DISPLAY BY NAME g_azb.*
+    -- 备注：使用 DISPLAY g_azb.* 会输出到 Linux 终端（调试用）
     
-END FUNCTION 
+END FUNCTION    -- 显示记录函数结束
 
 
+-- ====================================
+-- 导航跳转函数 - 处理导航按钮事件
+-- ====================================
+-- 功能说明：处理用户点击导航按钮（首笔/末笔等）的事件
+-- 参数：p_mode - 'F'(首笔) / 'L'(末笔) / 其他
 FUNCTION i010_fetch(p_mode)
 
-    DEFINE p_mode CHAR(1)
+    DEFINE p_mode CHAR(1)  -- 导航模式参数
 
+    -- 根据不同的导航模式进行处理
     CASE p_mode 
         WHEN 'F'
+            -- 导航到首笔记录
             LET g_azb.azb01 = "FIRST"
         WHEN 'L'
+            -- 导航到末笔记录
             LET g_azb.azb01 = "LAST"
         OTHERWISE 
+            -- 其他导航模式
             LET g_azb.azb01 = "OTHER"
     END CASE 
 
+    -- 显示跳转后的记录
     CALL i888_show()
     
-END FUNCTION 
+END FUNCTION    -- 导航跳转函数结束 
 
