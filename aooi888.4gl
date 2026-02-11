@@ -55,7 +55,10 @@ MAIN
         EXIT PROGRAM
     END IF
 
-    WHENEVER ERROR CALL cl_err_msg_log  --只要程序发生 SQL / Runtime Error，👉 自动调用 cl_err_msg_log
+    --主键重复、NOT NULL 违反、触发器错误
+    --全局错误处理模式
+    --全局只声明一次即可
+    WHENEVER ERROR CALL cl_err_msg_log  --只要程序发生 SQL / Runtime Error，👉 自动调用 cl_err_msg_log 
 
     IF NOT cl_setup("A00") THEN     --A00：模块代号，初始化：语言、画面风格、环境参数
         EXIT PROGRAM
@@ -132,6 +135,7 @@ FUNCTION i010_menu()
             CALL i888_copy()    --调佣复制功能函数
             --MESSAGE "复制"
 
+        --第一笔功能按钮
         ON ACTION FIRST
             CALL i010_fetch('F')
 
@@ -143,8 +147,9 @@ FUNCTION i010_menu()
         ON ACTION exit
             EXIT MENU
 
+        --程式闲置管控
         ON IDLE g_idle_seconds
-            CALL cl_on_idle()
+            CALL cl_on_idle()   --用户闲置时间达到设定时，可强制结束程式或者发送讯息等
             CONTINUE MENU
 
 
@@ -209,7 +214,7 @@ FUNCTION i888_insert()
     
     --主键重复、NOT NULL 违反、触发器错误
     --全局错误处理模式
-    WHENEVER ERROR CALL cl_err_msg_log 
+    --WHENEVER ERROR CALL cl_err_msg_log    --main中已经声明后续不用再次声明
 
     --=== 显示 INSERT SQL ===
     LET g_sql = 
@@ -503,7 +508,8 @@ FUNCTION i888_modify()
     END IF 
 
     --=== 正式 UPDATE ===
-    WHENEVER ERROR CALL cl_err_msg_log
+
+    --WHENEVER ERROR CALL cl_err_msg_log    ----main中已经声明后续不用再次声明
 
     --拼接SQL
     LET g_sql = 
@@ -623,7 +629,8 @@ FUNCTION i888_delete()
     END IF 
 
     --=== 开始删除 ===
-    WHENEVER ERROR CALL cl_err_msg_log
+
+    --WHENEVER ERROR CALL cl_err_msg_log    ----main中已经声明后续不用再次声明
 
     BEGIN WORK 
 
@@ -719,9 +726,11 @@ FUNCTION i888_copy()
         RETURN
     END IF
 
+    --=== 开始将复制的数据插入数据库 ===
 
     BEGIN WORK
-    WHENEVER ERROR CALL cl_err_msg_log
+
+    --WHENEVER ERROR CALL cl_err_msg_log      ----main中已经声明后续不用再次声明
 
     INSERT INTO azb_file
         (azb01, azboriu, azb02, azborig, azb06, azbdate, azbuser)
