@@ -27,7 +27,7 @@ DEFINE
     g_azb01_t    LIKE azb_file.azb01,
     g_wc         STRING,--动态where条件（SQL 条件）
     g_sql        STRING,--动态 SQL 字串
-    g_azb_rowid  LIKE type_file.chr18--存 rowid，用来 FOR UPDATE
+    g_azb_rowid  LIKE type_file.chr18    --存 rowid，用来 FOR UPDATE
 
 
 --控制用变量
@@ -43,6 +43,8 @@ DEFINE
     g_jump               LIKE type_file.num10,  --菜单跳转
     mi_no_ask            LIKE type_file.num5    --是否跳过确认
 
+DEFINE g_query_ok LIKE type_file.num5   --是否查询成功
+    
 --程序入口
 MAIN
 
@@ -232,19 +234,17 @@ FUNCTION i888_insert()
 
     --执行insert新增SQL
     EXECUTE s_ins USING 
-            g_azb.azb01,
-            g_azb.azboriu,
-            g_azb.azb02,
-            g_azb.azborig,
-            g_azb.azb06,
-            g_azb.azbdate,
+            g_azb.azb01,    --人员编号
+            g_azb.azboriu,  --姓名
+            g_azb.azb02,    --密码
+            g_azb.azborig,  --部门编号
+            g_azb.azb06,    --金额
+            g_azb.azbdate,  --最近更改日
             g_user
 
     --=== 显示影响行数 ===
     DISPLAY  "INSERT ROW COUNT = " || SQLCA.SQLERRD[3]
 
-    --关闭全局错误处理模式
-    WHENEVER ERROR STOP 
 
     IF SQLCA.SQLCODE <> 0 THEN
         MESSAGE "新增失败，SQLCODE = " || SQLCA.SQLCODE
@@ -326,6 +326,8 @@ FUNCTION i888_query()
     DEFINE l_where STRING 
     DEFINE l_sql STRING 
 
+    --重置查询状态
+    LET g_query_ok = 0
 
     --清变量 + 清画面
     INITIALIZE g_azb.* TO NULL 
@@ -333,11 +335,12 @@ FUNCTION i888_query()
 
     --输入查询条件（这里只用azb01查询）
     INPUT BY NAME 
-        g_azb.azb01,--人员编号
-        g_azb.azboriu,--人员名称
-        g_azb.azbacti,--有效码
-        g_azb.azbuser,--资料所有者
-        g_azb.azbgrup --资料群组
+        g_azb.azb01,    --人员编号
+        g_azb.azboriu,  --姓名
+        g_azb.azb02,    --密码
+        g_azb.azborig,  --部门编号
+        g_azb.azb06,    --金额
+        g_azb.azbdate  --最近更改日
         BEFORE INPUT 
             MESSAGE "请输入查询条件"
     END INPUT 
@@ -347,7 +350,7 @@ FUNCTION i888_query()
     
     --SQL拼接where条件
     LET l_where = " WHERE 1 = 1 "
-    LET l_sql   = "SELECT * FROM azb_file "
+    LET l_sql   = "SELECT rowid,A.* FROM azb_file A "
 
     DISPLAY "DEBUG INPUT l_where=[" || l_where || "]"
     DISPLAY "DEBUG INPUT l_sql=[" || l_sql || "]"
@@ -359,28 +362,34 @@ FUNCTION i888_query()
         LET l_where = l_where || " AND TRIM(azb01) = '" || g_azb.azb01 CLIPPED || "'"
     END IF 
     
-    --人员名称
+    --姓名
     IF g_azb.azboriu IS NOT NULL AND g_azb.azboriu CLIPPED <> " " THEN 
         LET l_where = l_where ||
             " AND azboriu like '%" || g_azb.azboriu CLIPPED || "%'"
     END IF 
 
-    --资料有效码
-    IF g_azb.azbacti IS NOT NULL AND g_azb.azbacti CLIPPED <> " " THEN 
+    --密码
+    IF g_azb.azb02 IS NOT NULL AND g_azb.azb02 CLIPPED <> " " THEN 
         LET l_where = l_where ||
-            " AND azbacti = '" || g_azb.azbacti CLIPPED || "'"
+            " AND azb02 = '" || g_azb.azb02 CLIPPED || "'"
     END IF 
 
-    --资料所有者
-    IF g_azb.azbuser IS NOT NULL AND g_azb.azbuser CLIPPED <> " " THEN 
+    --部门编号
+    IF g_azb.azborig IS NOT NULL AND g_azb.azborig CLIPPED <> " " THEN 
         LET l_where = l_where ||
-            " AND azbuser = '" || g_azb.azbuser CLIPPED || "'"
+            " AND azborig = '" || g_azb.azborig CLIPPED || "'"
+    END IF 
+
+    --金额
+    IF g_azb.azb06 IS NOT NULL AND g_azb.azb06 CLIPPED <> " " THEN 
+        LET l_where = l_where ||
+            " AND azb06 = '" || g_azb.azb06 CLIPPED || "'"
     END IF
 
-    --资料群组
-    IF g_azb.azbgrup IS NOT NULL AND g_azb.azbgrup CLIPPED <> " " THEN 
+    --最近更改日
+    IF g_azb.azbdate IS NOT NULL AND g_azb.azbdate CLIPPED <> " " THEN 
         LET l_where = l_where ||
-            " AND azbgrup = '" || g_azb.azbgrup CLIPPED || "'"
+            " AND azbdate = '" || g_azb.azbdate CLIPPED || "'"
     END IF
 
     --拼接完整SQL
@@ -394,10 +403,8 @@ FUNCTION i888_query()
     DECLARE c_qry CURSOR FOR s_qry
     OPEN c_qry
 
-    FETCH c_qry INTO g_azb.*
+    FETCH c_qry INTO g_azb_rowid,g_azb.*
     
-
-
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "查无资料"
         CLOSE c_qry
@@ -406,6 +413,9 @@ FUNCTION i888_query()
 
     --显示结果
     DISPLAY BY NAME g_azb.*
+
+    --查到资料才允许修改
+    LET g_query_ok = 1
 
     MESSAGE "查询成功！"
 
@@ -416,7 +426,7 @@ END FUNCTION    -- 查询功能函数结束
 
 
 --========================
---  修改功能函数
+--  修改功能函数(查询之后才能进行修改)
 --========================
 FUNCTION i888_modify()
 
@@ -424,52 +434,20 @@ FUNCTION i888_modify()
 
     --先将最近修改日的时间赋值
     DEFINE l_today DATE
-    LET l_today = TODAY
 
-
-    --清变量 + 清画面
-    INITIALIZE g_azb.* TO NULL 
-    CLEAR FORM 
-
-    --先输入要修改的主键
-    INPUT BY NAME g_azb.azb01
-        BEFORE INPUT 
-            MESSAGE "请输入要修改的人员编号"
-    END INPUT 
-
-    --主键检查
-    IF g_azb.azb01 IS NULL OR g_azb.azb01 CLIPPED = " " THEN 
-        MESSAGE "人员编号不能为空！"
+    --必须先查询
+    IF g_query_ok <> 1 THEN 
+        MESSAGE "请先查询资料,再进行修改！"
         RETURN 
     END IF 
 
-    --先取rowid
-    SELECT rowid
-        INTO g_azb_rowid
-        FROM azb_file
-        WHERE TRIM(azb01) = TRIM(g_azb.azb01)
-
-    IF SQLCA.SQLCODE <> 0 THEN 
-        MESSAGE "资料不存在，无法修改！"
-        RETURN
-    END IF 
-
-    --再取整笔资料
-    SELECT *
-        INTO g_azb.*
-        FROM azb_file
-        WHERE rowid = g_azb_rowid
-
-    --显示原资料
-    DISPLAY BY NAME g_azb.*
-
-
-    --=== 锁资料（FOR UPDATE）===
+    --最近修改日字段赋值为当天
+    LET l_today = TODAY
 
     --开事务
     BEGIN WORK 
 
-    --开锁定游标
+    --锁资料
     OPEN i888_cl USING g_azb_rowid
     
     FETCH i888_cl INTO g_azb.*
@@ -481,20 +459,27 @@ FUNCTION i888_modify()
         RETURN
     END IF 
 
+    --还原查询资料
+    DISPLAY BY NAME g_azb.*
+
+
     --进入修改输入（主键不可修改）
     INPUT BY NAME 
-        g_azb.azboriu,
-        g_azb.azb02,
-        g_azb.azbacti,
-        g_azb.azbgrup
+        g_azb.azboriu,  --姓名
+        g_azb.azb02,    --密码
+        g_azb.azborig,  --部门编号
+        g_azb.azb06,    --金额
+        g_azb.azbdate  --最近更改日
         BEFORE INPUT 
-            MESSAGE "请修改资料（ESC取消）"
+            MESSAGE "请修改资料（主键不可修改）"
     END INPUT 
+
 
     --资料检查
     IF NOT i888_chk_modify() THEN 
         MESSAGE "资料检查失败,修改取消"
         CLOSE i888_cl
+        ROLLBACK WORK 
         RETURN
     END IF 
 
@@ -504,40 +489,36 @@ FUNCTION i888_modify()
     IF l_ok <> 1 THEN 
         MESSAGE "已取消修改！"
         CLOSE i888_cl
+        ROLLBACK WORK 
         RETURN 
     END IF 
 
-    
-    --=== 正式 UPDATE ===
-
-    --拼接SQL
-    LET g_sql = 
+    --正式执行update更新
+    LET g_sql =
         "UPDATE azb_file SET " ||
-        "azboriu = ?, " ||  --姓名
-        "azb02 = ?," ||     --密码
-        "azbuser = ?," ||   --资料所有者
-        "azbdate = ? " ||   --最近更改日
+        "azboriu = ?, " ||
+        "azb02   = ?, " ||
+        "azborig = ?, " ||
+        "azb06   = ?, " ||
+        "azbuser = ?, " ||
+        "azbdate = ? "  ||
         "WHERE rowid = ?"
 
-    DISPLAY "FINAL SQL = [" || g_sql || "]" --输出将要执行的SQL
-    DISPLAY "FINAL UPDATE SQL = [" || g_sql || "]"  --输出将要执行的SQL
-    DISPLAY "ROWID = [" || g_azb_rowid || "]"   --输出行id
+    DISPLAY "UPDATE SQL => " || g_sql
 
-
-    
     PREPARE s_upd FROM g_sql
 
     EXECUTE s_upd USING
-        g_azb.azboriu,   -- 姓名 
-        g_azb.azb02,    --人员编号
-        g_user,         --资料所有者
-        l_today,        --最近更改日
+        g_azb.azboriu,
+        g_azb.azb02,
+        g_azb.azborig,
+        g_azb.azb06,
+        g_user,
+        l_today,
         g_azb_rowid
-    
 
-    DISPLAY "DEBUG SQLCA.SQLERRD[3] = " || SQLCA.SQLERRD[3]
-
- 
+    --输出UPDATE影响行数
+    DISPLAY "update更新影响行数 ： " || SQLCA.SQLERRD[3]
 
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "修改失败,SQLCODE = " || SQLCA.SQLCODE
@@ -552,7 +533,7 @@ FUNCTION i888_modify()
     MESSAGE "修改成功!"
 
     --显示修改后资料
-    CALL i888_show()
+    --CALL i888_show()
 
 END FUNCTION    -- 修改功能函数结束
 
