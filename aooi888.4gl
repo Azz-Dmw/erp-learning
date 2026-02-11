@@ -2,7 +2,7 @@
 # Pattern name...: aooi888.4gl
 # Descriptions...: 签核人员资料维护作业
 # Date & Author..: 2026/02/04 By dmw
-# Note...........: 本程序为训练测试程序（空壳版）
+# Note...........: 本程序为训练测试程序
 
 DATABASE jf --连接ds数据库
 
@@ -212,9 +212,6 @@ FUNCTION i888_insert()
     --开事务
     BEGIN WORK 
     
-    --主键重复、NOT NULL 违反、触发器错误
-    --全局错误处理模式
-    --WHENEVER ERROR CALL cl_err_msg_log    --main中已经声明后续不用再次声明
 
     --=== 显示 INSERT SQL ===
     LET g_sql = 
@@ -269,7 +266,8 @@ FUNCTION i888_insert()
     CALL i888_show() 
     
     
-END FUNCTION 
+END FUNCTION    -- 新增功能函数结束
+
 
 
 --检查主键是否合法
@@ -301,6 +299,8 @@ FUNCTION i888_chk_pk()
 
 END FUNCTION
 
+
+
         -- 这里以后可以放：
         -- 必填栏位检查
         -- 逻辑检查（日期大小、状态组合等）
@@ -313,7 +313,7 @@ FUNCTION i888_chk_insert()
 
         RETURN TRUE 
         
-END FUNCTION    -- 新增功能函数结束
+END FUNCTION    
 
 
 
@@ -507,9 +507,8 @@ FUNCTION i888_modify()
         RETURN 
     END IF 
 
+    
     --=== 正式 UPDATE ===
-
-    --WHENEVER ERROR CALL cl_err_msg_log    ----main中已经声明后续不用再次声明
 
     --拼接SQL
     LET g_sql = 
@@ -538,8 +537,7 @@ FUNCTION i888_modify()
 
     DISPLAY "DEBUG SQLCA.SQLERRD[3] = " || SQLCA.SQLERRD[3]
 
-
-    WHENEVER ERROR STOP 
+ 
 
     IF SQLCA.SQLCODE <> 0 THEN 
         MESSAGE "修改失败,SQLCODE = " || SQLCA.SQLCODE
@@ -628,9 +626,8 @@ FUNCTION i888_delete()
         RETURN 
     END IF 
 
+    
     --=== 开始删除 ===
-
-    --WHENEVER ERROR CALL cl_err_msg_log    ----main中已经声明后续不用再次声明
 
     BEGIN WORK 
 
@@ -674,8 +671,6 @@ FUNCTION i888_delete()
     INITIALIZE g_azb.* TO NULL 
     CLEAR FORM 
 
-    WHENEVER ERROR STOP 
-        
     
 END FUNCTION
 
@@ -726,11 +721,10 @@ FUNCTION i888_copy()
         RETURN
     END IF
 
+    
     --=== 开始将复制的数据插入数据库 ===
 
     BEGIN WORK
-
-    --WHENEVER ERROR CALL cl_err_msg_log      ----main中已经声明后续不用再次声明
 
     INSERT INTO azb_file
         (azb01, azboriu, azb02, azborig, azb06, azbdate, azbuser)
@@ -743,7 +737,6 @@ FUNCTION i888_copy()
          g_azb.azbdate,
          g_user)
 
-    WHENEVER ERROR STOP
 
     IF SQLCA.SQLCODE <> 0 THEN
         MESSAGE "复制新增失败，SQLCODE = " || SQLCA.SQLCODE
