@@ -95,7 +95,7 @@ MAIN
     LET p_col = 10
 
     -- 打开主窗口，使用指定的表单文件和系统统一风格
-    OPEN WINDOW i010_w AT p_row, p_col
+    OPEN WINDOW i888_w AT p_row, p_col
         WITH FORM "aoo/42f/aooi888"
         ATTRIBUTE (STYLE = g_win_style CLIPPED)
 
@@ -105,11 +105,11 @@ MAIN
     -- ★ 第六步：显示主菜单 ★
     -- 所有功能入口都从这个菜单开始
     LET g_action_choice = ""
-    CALL i010_menu()
+    CALL i888_menu()
 
     -- ★ 第七步：清理资源 ★
     -- 关闭主窗口
-    CLOSE WINDOW i010_w
+    CLOSE WINDOW i888_w
 
     -- 记录程序结束使用时间
     CALL cl_used(g_prog, g_time, 2) RETURNING g_time
@@ -120,12 +120,8 @@ END MAIN
 # ====================================
 # 主菜单函数 - 功能导航和流程控制
 # ====================================
-# 功能说明：
-#   - 定义所有主要功能按钮（新增、查询、修改、删除、复制）
-#   - 管理菜单事件和用户交互
-#   - 控制导航条状态和闲置超时
 
-FUNCTION i010_menu()
+FUNCTION i888_menu()
 
     MENU ""
 
@@ -133,25 +129,35 @@ FUNCTION i010_menu()
         BEFORE MENU
             CALL cl_navigator_setting(g_curs_index, g_row_count)
 
-        -- 【新增】按钮：添加新的人员记录
+        -- 新增按钮：添加新的人员记录
         ON ACTION INSERT
             CALL i888_insert()
             
-        -- 【查询】按钮：按条件查询人员记录
+        -- 查询按钮：按条件查询人员记录
         ON ACTION query
              CALL i888_query()
 
-        -- 【修改】按钮：修改已查询的人员记录
+        -- 修改按钮：修改已查询的人员记录
         ON ACTION modify
             CALL i888_modify()
 
-        -- 【删除】按钮：删除指定的人员记录
+        -- 删除按钮：删除指定的人员记录
         ON ACTION DELETE
             CALL i888_delete()
 
-        -- 【复制】按钮：复制已查询的人员记录为新记录
+        -- 复制按钮：复制已查询的人员记录为新记录
         ON ACTION reproduce
             CALL i888_copy()
+
+        --退出功能按钮
+        ON ACTION exit
+            EXIT MENU
+
+        --程式闲置管控
+        ON IDLE g_idle_seconds
+            CALL cl_on_idle()   --用户闲置时间达到设定时，可强制结束程式或者发送讯息等
+            CONTINUE MENU
+        
 
 
     END MENU
@@ -345,9 +351,19 @@ FUNCTION i888_query()
         g_azb.azborig,  -- 部门编号
         g_azb.azb06,    -- 授权金额
         g_azb.azbdate   -- 修改日期
+
         BEFORE INPUT 
-            MESSAGE "请输入查询条件"
-    END INPUT 
+            MESSAGE "请输入查询条件（点击放弃取消查询）"
+    END INPUT
+
+    -- 检查用户是否点击放弃/取消按钮
+    IF INT_FLAG THEN
+        MESSAGE "查询已取消"
+        INITIALIZE g_azb.* TO NULL
+        CLEAR FORM                           -- 清空画面档
+        LET INT_FLAG = FALSE                 -- 重置中断标志，恢复正常处理
+        RETURN                               -- 立即返回，不继续执行后续查询代码
+    END IF
 
     DISPLAY "DEBUG INPUT azb01=[" || g_azb.azb01 || "]"
 
@@ -414,7 +430,9 @@ FUNCTION i888_query()
     
     -- 检查是否查到数据
     IF SQLCA.SQLCODE <> 0 THEN 
-        MESSAGE "查无资料"
+        MESSAGE "查无资料！"
+        INITIALIZE g_azb.* TO NULL
+        CLEAR FORM
         CLOSE c_qry
         RETURN
     END IF 
@@ -776,7 +794,7 @@ END FUNCTION    -- 复制功能函数结束
 -- 显示记录函数 - 在表单上显示数据
 -- ====================================
 -- 功能说明：将 g_azb 记录中的数据显示在界面的输入框上
--- 参数说明：无（直接使用全局变量 g_azb）
+
 FUNCTION i888_show()
 
     -- 使用 BY NAME 方式显示：根据变量名匹配表单控件
@@ -791,7 +809,7 @@ END FUNCTION    -- 显示记录函数结束
 -- 导航跳转函数 - 处理导航按钮事件
 -- ====================================
 -- 功能说明：处理用户点击导航按钮（首笔/末笔等）的事件
--- 参数：p_mode - 'F'(首笔) / 'L'(末笔) / 其他
+
 FUNCTION i010_fetch(p_mode)
 
     DEFINE p_mode CHAR(1)  -- 导航模式参数
