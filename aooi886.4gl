@@ -1,23 +1,6 @@
-# Prog. Version..: '5.30.15-14.10.14(00010)'     #
-#
-# Descriptions...: 料件單位換算資料維護作業(aooi103)
-# Date & Author..: 91/08/10 By Nora
-# Date & Author..: 91/09/30 By May  反向單位資料
-# Modify.........: 92/05/06 By David Wang
-#----------------------------deBUG History------------------------------
-# 1992/09/25(Lee):在輸入單身時, 無法按ESC 結束. 單身原輸入時, 在甲單
-#    位地方判斷一定要輸入值後, 方可結束該欄位的其餘動作, 造成esc 鍵無
-#    效, 故將該判斷改成在after field smd02時判斷若非null, 則為相關的
-#    判斷, 在before field smd03時, 先判斷該smd02是否為null, 若null則
-#    不允許進入該欄位即可.
-# 1992/09/25(Lee): 在單身輸入後, 程式會自動增加一筆反相的資料, 但會將
-#    資料insert到第三個line中, 而留第二個line再輸入其他值, 造成困擾.
-#    程式原先在insert反相的資料後, 只單純的將資料顯示在第三行, 造成上
-#    述現象. 改進的方式為: 在insert該筆資料後, 重填array, exit input
-#    再重進input array, 如此便可
-# genero  script marked # 1992/09/25(Lee): 在單身按arrow key移動時, arrow的欄位reverse. 原因是
-#    雖然在相對的地方有做清除, 但有. 已拿掉該attribute
-
+# Prog. Version..: '5.30.15-14.10.14(00010)' 
+# Descriptions...: 料件單位換算資料維護作業(aooi886)
+# Date & Author..: 2026/02/25 By Azz
 
 DATABASE ds                             # 指定数据库连接
 
@@ -36,8 +19,8 @@ DEFINE
         smd06   LIKE smd_file.smd06,     # 乙单位数量
         smd03   LIKE smd_file.smd03,     # 乙单位
         smdacti LIKE smd_file.smdacti,   # 数据有效码
-        smdpos  LIKE smd_file.smdpos,    # FUN-870100
-        smddate LIKE smd_file.smddate    # 最近修改日期 TQC-B90002
+        smdpos  LIKE smd_file.smdpos,    
+        smddate LIKE smd_file.smddate    # 最近修改日期 
     END RECORD,
 
     g_smd_t    RECORD                       # 程序变量旧值
@@ -195,7 +178,7 @@ END MAIN
 #查询资料
 FUNCTION i103_cs()
 
-    DEFINE  lc_qbe_sn       LIKE    gbm_file.gbm01    #No.FUN-580031  HCN
+    DEFINE  lc_qbe_sn       LIKE    gbm_file.gbm01    
  
     IF cl_null(g_argv1) THEN
     
@@ -289,13 +272,14 @@ FUNCTION i103_cs()
 
        END CONSTRUCT
        
-    IF INT_FLAG THEN
-          RETURN
-    END IF
-    ELSE
-       LET g_wc=" ima01='",g_argv1,"'"
-       LET g_wc2=' 1=1'
-    END IF
+      IF INT_FLAG THEN
+            RETURN
+      END IF
+      ELSE
+         LET g_wc=" ima01='",g_argv1,"'"
+         LET g_wc2=' 1=1'
+
+   END IF
 
     LET g_wc = g_wc CLIPPED,cl_get_extra_cond('imauser', 'imagrup')
  
@@ -393,28 +377,7 @@ END FUNCTION
  
 #Query 查詢
 FUNCTION i103_q()
- 
-    LET g_row_count = 0
-    LET g_curs_index = 0
-    CALL cl_navigator_setting( g_curs_index, g_row_count )
-    MESSAGE ""
-    CALL cl_opmsg('q')
-    DISPLAY '   ' TO FORMONLY.cnt
-    CALL i103_cs()
-    IF INT_FLAG THEN
-       LET INT_FLAG = 0
-       RETURN
-    END IF
-    OPEN i103_cs                            # 從DB產生合乎條件TEMP(0-30秒)
-    IF SQLCA.sqlcode THEN
-       CALL cl_err('',SQLCA.sqlcode,0)
-       INITIALIZE g_ima.* TO NULL
-    ELSE
-       OPEN i103_count
-       FETCH i103_count INTO g_row_count
-       DISPLAY g_row_count TO FORMONLY.cnt
-       CALL i103_fetch('F')                  # 讀出TEMP第一筆並顯示
-    END IF
+      MESSAGE "查询功能！"
 END FUNCTION
  
 #處理資料的讀取
@@ -750,7 +713,9 @@ FUNCTION i103_bp(p_ud)
 
       &include "qry_string.4gl"
    END DISPLAY
+
    CALL cl_set_act_visible("accept,cancel", TRUE)
+
 END FUNCTION
  
  
@@ -760,44 +725,52 @@ END FUNCTION
  
  
 FUNCTION i103_mu_ui()
+
     CALL cl_set_comp_visible("ima906",g_sma.sma115 = 'Y')
     CALL cl_set_comp_visible("group043",g_sma.sma115 = 'Y')
     CALL cl_set_comp_visible("ima907",g_sma.sma115 = 'Y')
     CALL cl_set_comp_visible("group044",g_sma.sma115='Y')
+
     IF g_sma.sma122='1' THEN
        CALL cl_getmsg('asm-302',g_lang) RETURNING g_msg
        CALL cl_set_comp_att_text("ima907",g_msg CLIPPED)
     END IF
+
     IF g_sma.sma122='2' THEN
        CALL cl_getmsg('asm-304',g_lang) RETURNING g_msg
        CALL cl_set_comp_att_text("ima907",g_msg CLIPPED)
     END IF
+
 END FUNCTION
 
 
 FUNCTION i103_smd06_check()
+
    IF NOT cl_null(g_smd[l_ac].smd06) AND NOT cl_null(g_smd[l_ac].smd03) THEN
-      #IF cl_null(g_smd[l_ac].smd06) OR cl_null(g_smd03_t) OR g_smd_t.smd06 != g_smd[l_ac].smd06 OR g_smd03_t != g_smd[l_ac].smd03 THEN    #TQC-C20183
-      IF cl_null(g_smd_t.smd06) OR cl_null(g_smd03_t) OR g_smd_t.smd06 != g_smd[l_ac].smd06 OR g_smd03_t != g_smd[l_ac].smd03 THEN         #TQC-C20183
+      IF cl_null(g_smd_t.smd06) OR cl_null(g_smd03_t) OR g_smd_t.smd06 != g_smd[l_ac].smd06 OR g_smd03_t != g_smd[l_ac].smd03 THEN  
          LET g_smd[l_ac].smd06=s_digqty(g_smd[l_ac].smd06,g_smd[l_ac].smd03)
          DISPLAY BY NAME g_smd[l_ac].smd06
       END IF
    END IF
+
    IF NOT cl_null(g_smd[l_ac].smd06) THEN
       IF g_smd[l_ac].smd06 <=0 THEN
          RETURN FALSE
       END IF
    END IF
+
    RETURN TRUE
+
 END FUNCTION
 
 FUNCTION i103_smd04_check()
+
    IF NOT cl_null(g_smd[l_ac].smd04) AND NOT cl_null(g_smd[l_ac].smd02) THEN
-      #IF cl_null(g_smd[l_ac].smd04) OR cl_null(g_smd02_t) OR g_smd_t.smd04 != g_smd[l_ac].smd04 OR g_smd02_t != g_smd[l_ac].smd02 THEN   #TQC-C20183
-      IF cl_null(g_smd_t.smd04) OR cl_null(g_smd02_t) OR g_smd_t.smd04 != g_smd[l_ac].smd04 OR g_smd02_t != g_smd[l_ac].smd02 THEN        #TQC-C20183
+      IF cl_null(g_smd_t.smd04) OR cl_null(g_smd02_t) OR g_smd_t.smd04 != g_smd[l_ac].smd04 OR g_smd02_t != g_smd[l_ac].smd02 THEN       
          LET g_smd[l_ac].smd04=s_digqty(g_smd[l_ac].smd04,g_smd[l_ac].smd02)
          DISPLAY BY NAME g_smd[l_ac].smd04
       END IF
    END IF
+
 END FUNCTION
 
