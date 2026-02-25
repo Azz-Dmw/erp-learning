@@ -192,7 +192,7 @@ MAIN
     
 END MAIN
  
-#QBE 查詢資料
+#查询资料
 FUNCTION i103_cs()
 
     DEFINE  lc_qbe_sn       LIKE    gbm_file.gbm01    #No.FUN-580031  HCN
@@ -420,8 +420,8 @@ END FUNCTION
 #處理資料的讀取
 FUNCTION i103_fetch(p_flag)
 DEFINE
-    p_flag          LIKE type_file.chr1,                 #處理方式        #No.FUN-680102 VARCHAR(1)
-    l_abso          LIKE type_file.num10                 #絕對的筆數        #No.FUN-680102 INTEGER
+    p_flag          LIKE type_file.chr1,                 #處理方式        
+    l_abso          LIKE type_file.num10                 #絕對的筆數    
  
     CASE p_flag
         WHEN 'N' FETCH NEXT     i103_cs INTO g_ima.ima01
@@ -491,560 +491,21 @@ FUNCTION i103_show()
        g_ima.ima25,g_ima.ima44,g_ima.ima63,g_ima.ima55
       ,g_ima.ima906,g_ima.ima907,g_ima.ima31   
 
-   CALL i103_b_fill(g_wc2)                 #单身
+   CALL i103_b_fill()                 #单身
    CALL cl_show_fld_cont()                 
 END FUNCTION
  
-#單身
+#单身
 FUNCTION i103_b()
-DEFINE
-   l_ac_t          LIKE type_file.num5,                #未取消的ARRAY CNT        #No.FUN-680102 SMALLINT
-   l_n             LIKE type_file.num5,                #檢查重複用        #No.FUN-680102 SMALLINT
-   l_lock_sw       LIKE type_file.chr1,                 #單身鎖住否        #No.FUN-680102 VARCHAR(1)
-   p_cmd           LIKE type_file.chr1,                 #處理狀態        #No.FUN-680102 VARCHAR(1)
-   acti_tm         LIKE type_file.chr1,           # Prog. Version..: '5.30.15-14.10.14(01),             #
-   l_sw            LIKE type_file.chr1,           # Prog. Version..: '5.30.15-14.10.14(01),            #可更改否 (含取消)
-   sw              LIKE type_file.chr1,           # Prog. Version..: '5.30.15-14.10.14(01),            #可更改否 (含取消)
-   l_allow_insert  LIKE type_file.chr1,           # Prog. Version..: '5.30.15-14.10.14(01),           #可新增否
-   l_allow_delete  LIKE type_file.chr1,           # Prog. Version..: '5.30.15-14.10.14(01)           #可刪除否
-   #l_azo06         LIKE azo_file.azo06,           #No.CHI-BB0048 #FUN-DA0126
-   #l_azo05         LIKE azo_file.azo05,           #No.CHI-BB0048 #FUN-DA0126
-   l_fac           LIKE ima_file.ima31_fac        #CHI-D90022
- 
-   LET g_action_choice = ""
-   IF s_shut(0) THEN RETURN END IF
-   IF g_ima.ima01 IS NULL
-      THEN RETURN
-   END IF
-   SELECT * INTO g_ima.* FROM ima_file WHERE ima01=g_ima.ima01
-   IF g_ima.imaacti ='N'
-      THEN CALL cl_err(g_ima.ima01,'mfg1000',0)     #檢查資料是否為無效
-      RETURN
-   END IF
-
-#FUN-B90104----add--begin---- 服飾行業，子料件不可更改
-   IF s_industry('slk') THEN
-      IF g_ima.ima151='N' AND g_ima.imaag='@CHILD' THEN
-         CALL cl_err(g_ima.ima01,'axm_665',1)
-         RETURN
-      END IF
-   END IF
-#FUN-B90104----add--end---
- 
-   LET l_allow_insert = cl_detail_input_auth('insert')
-   LET l_allow_delete = cl_detail_input_auth('delete')
-   LET g_action_choice = ""
- 
-   CALL cl_opmsg('b')
- 
-  #LET g_forupd_sql = "SELECT smd04,smd02,smd06,smd03,smdacti,smdpos",   #FUN-870100
-   LET g_forupd_sql = "SELECT smd04,smd02,smd06,smd03,smdacti,smdpos,smddate",   #TQC-B90002 add smddate
-                      "  FROM smd_file  WHERE smd01=? AND smd02=?",
-                      "   AND smd03=? FOR UPDATE"
-   LET g_forupd_sql = cl_forupd_sql(g_forupd_sql)
-   DECLARE i103_bcl CURSOR FROM g_forupd_sql      # LOCK CURSOR
- 
-   INPUT ARRAY g_smd WITHOUT DEFAULTS FROM s_smd.*
-         ATTRIBUTE(COUNT=g_rec_b,MAXCOUNT=g_max_rec,UNBUFFERED,
-                   INSERT ROW=l_allow_insert,DELETE ROW=l_allow_delete,APPEND ROW=l_allow_insert)
- 
-      BEFORE INPUT
-         IF g_rec_b != 0 THEN
-            CALL fgl_set_arr_curr(l_ac)
-         END IF
-         #No.FUN-BB0086--add--begin--
-         LET g_smd02_t = NULL   
-         LET g_smd03_t = NULL
-         #No.FUN-BB0086--add--end--
- 
-      BEFORE ROW
-          LET p_cmd=''
-          LET l_ac = ARR_CURR()
-          LET l_lock_sw = 'N'            #DEFAULT
-          LET l_n  = ARR_COUNT()
-          BEGIN WORK
-          OPEN i103_cl USING g_ima.ima01
-          IF SQLCA.sqlcode
-             THEN CALL cl_err(g_ima.ima01,SQLCA.sqlcode,0)
-             CLOSE i103_cl
-             ROLLBACK WORK
-             RETURN
-          ELSE
-             FETCH i103_cl INTO g_ima.*
-             IF SQLCA.sqlcode
-                THEN CALL cl_err(g_ima.ima01,SQLCA.sqlcode,0)
-                CLOSE i103_cl
-                ROLLBACK WORK
-                RETURN
-              END IF
-          END IF
-          IF g_rec_b >= l_ac THEN
-             LET p_cmd='u'
-             LET g_smd_t.* = g_smd[l_ac].*  #BACKUP
-             #No.FUN-BB0086--add--begin--
-             LET g_smd02_t = g_smd[l_ac].smd02
-             LET g_smd03_t = g_smd[l_ac].smd03
-             #No.FUN-BB0086--add--end--
-             OPEN i103_bcl USING g_ima.ima01,g_smd_t.smd02,g_smd_t.smd03               #表示更改狀態
-             IF SQLCA.sqlcode THEN
-                CALL cl_err(g_smd_t.smd02,SQLCA.sqlcode,1)
-                LET l_lock_sw = "Y"
-             ELSE
-                FETCH i103_bcl INTO g_smd[l_ac].*
-                IF SQLCA.sqlcode THEN
-                   CALL cl_err(g_smd_t.smd02,SQLCA.sqlcode,1)
-                   LET l_lock_sw="Y"
-                END IF
-             END IF
-             CALL cl_show_fld_cont()     #FUN-550037(smin)
-          END IF
- 
-      BEFORE INSERT
-         LET l_n = ARR_COUNT()
-         LET p_cmd='a'
-         INITIALIZE g_smd[l_ac].* TO NULL      #900423
-         LET g_smd[l_ac].smd04=1               #DEFAULT
-         LET g_smd[l_ac].smd06=1
-         LET g_smd[l_ac].smdacti='Y'
-         #LET g_smd[l_ac].smdpos='N'           #FUN-870100 #FUN-B50042 mark 
-         #DISPLAY BY NAME g_smd[l_ac].smdpos   #FUN-870100 #FUN-B50042 mark
-         LET g_smd[l_ac].smddate=g_today       #TQC-B90002  
-         LET g_smd_t.* = g_smd[l_ac].*         #新輸入資料
-         CALL cl_show_fld_cont()     #FUN-550037(smin)
-         NEXT FIELD smd04
- 
-      AFTER INSERT
-         IF INT_FLAG THEN                      #900423
-            CALL cl_err('',9001,0)
-            LET INT_FLAG = 0
-            CANCEL INSERT
-         END IF
-         INSERT INTO smd_file (smd01,smd02,smd03,smd04,smd06,smdacti,smddate)      #FUN-870100   #MOD-C30093 add smddate
-                       VALUES (g_ima.ima01,g_smd[l_ac].smd02,
-                               g_smd[l_ac].smd03,g_smd[l_ac].smd04,
-                               g_smd[l_ac].smd06,g_smd[l_ac].smdacti,g_smd[l_ac].smddate)   #FUN-870100 #FUN-B50042 remove POS  ##MOD-C30093 add g_smd[l_ac].smddate
-         IF SQLCA.sqlcode THEN
-#           CALL cl_err(g_smd[l_ac].smd02,SQLCA.sqlcode,0)   #No.FUN-660131
-            CALL cl_err3("ins","smd_file",g_smd[l_ac].smd02,"",SQLCA.sqlcode,"","",1)  #No.FUN-660131
-            CANCEL INSERT
-         ELSE
-            #CHI-D90022---begin
-            IF g_ima.ima31 <> g_ima.ima25 THEN
-               CALL s_umfchk(g_ima.ima01,g_ima.ima31,g_ima.ima25)
-                    RETURNING g_sw,l_fac
-               IF g_sw = '0' AND l_fac <> g_ima.ima31_fac THEN
-                  UPDATE ima_file
-                     SET ima31_fac = l_fac
-                   WHERE ima01 = g_ima.ima01
-               END IF
-            END IF
-            IF g_ima.ima44 <> g_ima.ima25 THEN
-               CALL s_umfchk(g_ima.ima01,g_ima.ima44,g_ima.ima25)
-                    RETURNING g_sw,l_fac
-               IF g_sw = '0' AND l_fac <> g_ima.ima44_fac THEN
-                  UPDATE ima_file
-                     SET ima44_fac = l_fac
-                   WHERE ima01 = g_ima.ima01
-               END IF
-            END IF
-            IF g_ima.ima55 <> g_ima.ima25 THEN
-               CALL s_umfchk(g_ima.ima01,g_ima.ima55,g_ima.ima25)
-                    RETURNING g_sw,l_fac
-               IF g_sw = '0' AND l_fac <> g_ima.ima55_fac THEN
-                  UPDATE ima_file
-                     SET ima55_fac = l_fac
-                   WHERE ima01 = g_ima.ima01
-               END IF
-            END IF
-            IF g_ima.ima63 <> g_ima.ima25 THEN
-               CALL s_umfchk(g_ima.ima01,g_ima.ima63,g_ima.ima25)
-                    RETURNING g_sw,l_fac
-               IF g_sw = '0' AND l_fac <> g_ima.ima63_fac THEN
-                  UPDATE ima_file
-                     SET ima63_fac = l_fac
-                   WHERE ima01 = g_ima.ima01
-               END IF
-            END IF
-            IF g_ima.ima86 <> g_ima.ima25 THEN
-               CALL s_umfchk(g_ima.ima01,g_ima.ima86,g_ima.ima25)
-                    RETURNING g_sw,l_fac
-               IF g_sw = '0' AND l_fac <> g_ima.ima86_fac THEN
-                  UPDATE ima_file
-                     SET ima86_fac = l_fac
-                   WHERE ima01 = g_ima.ima01
-               END IF
-            END IF
-            #CHI-D90022---end
-            MESSAGE 'INSERT O.K'
-            LET g_rec_b=g_rec_b+1
-            DISPLAY g_rec_b TO FORMONLY.cn2
-            #CHI-DA0034---begin
-            IF g_smd[l_ac].smd02 <> g_smd[l_ac].smd03 THEN 
-               UPDATE smd_file
-                  SET smd04 = g_smd[l_ac].smd06,
-                      smd06 = g_smd[l_ac].smd04,
-                      smdacti = g_smd[l_ac].smdacti,
-                      smddate=g_smd[l_ac].smddate
-                WHERE smd02 = g_smd[l_ac].smd03
-                  AND smd03 = g_smd[l_ac].smd02
-                  AND smd01 = g_ima.ima01
-               IF SQLCA.sqlcode OR SQLCA.SQLERRD[3] = 0 THEN
-                  LET l_ac = ARR_CURR()
-                  INSERT INTO smd_file (smd01,smd02,smd03,smd04,smd06,smdacti,smddate)     
-                                VALUES (g_ima.ima01,g_smd[l_ac].smd03,
-                                        g_smd[l_ac].smd02,g_smd[l_ac].smd06,
-                                        g_smd[l_ac].smd04,g_smd[l_ac].smdacti,g_smd[l_ac].smddate) 
-                  IF SQLCA.sqlcode THEN
-                     CALL cl_err3("ins","smd_file",g_smd[l_ac].smd02,"",SQLCA.sqlcode,"","",1) 
-                     CANCEL INSERT
-                  ELSE
-                     MESSAGE 'INSERT O.K'
-                     LET g_rec_b = g_rec_b+1
-                     LET g_smd[g_rec_b].smd03=g_smd[l_ac].smd02
-                     LET g_smd[g_rec_b].smd02=g_smd[l_ac].smd03
-                     LET g_smd[g_rec_b].smd04=g_smd[l_ac].smd06
-                     LET g_smd[g_rec_b].smd06=g_smd[l_ac].smd04
-                     LET g_smd[g_rec_b].smdacti=g_smd[l_ac].smdacti
-                     LET g_smd[g_rec_b].smddate=g_smd[l_ac].smddate
-                     DISPLAY g_rec_b TO FORMONLY.cn2  
-                  END IF 
-               ELSE
-                  #若update成功且反向資料處於同一螢幕時的DISPLAY
-                  FOR i = 1 TO g_smd.getLength()
-                     IF g_smd[i].smd03 = g_smd[l_ac].smd02 AND 
-                        g_smd[i].smd02 = g_smd[l_ac].smd03 THEN
-                        LET g_smd[i].smd03=g_smd[l_ac].smd02
-                        LET g_smd[i].smd02=g_smd[l_ac].smd03
-                        LET g_smd[i].smd04=g_smd[l_ac].smd06
-                        LET g_smd[i].smd06=g_smd[l_ac].smd04
-                        LET g_smd[i].smdacti=g_smd[l_ac].smdacti
-                        LET g_smd[i].smddate=g_smd[l_ac].smddate
-                        EXIT FOR 
-                     END IF
-                  END FOR  
-               END IF 
-            END IF     
-            #CHI-DA0034---end
-         END IF
- 
-      AFTER FIELD smd02                        #check 甲單位是否重複
-         IF NOT cl_null(g_smd[l_ac].smd02) THEN
-            IF g_smd[l_ac].smd02 != g_smd_t.smd02 OR g_smd_t.smd02 IS NULL THEN
-               SELECT * FROM gfe_file WHERE gfe01 = g_smd[l_ac].smd02
-               IF SQLCA.sqlcode THEN
-#                 CALL cl_err(g_smd[l_ac].smd02,'aoo-012',0)   #No.FUN-660131
-                  CALL cl_err3("sel","gfe_file",g_smd[l_ac].smd02,"","aoo-012","","",1)  #No.FUN-660131
-                  LET g_smd[l_ac].smd02 = g_smd_t.smd02
-                  NEXT FIELD smd02
-               END IF
-            END IF
-            #No.FUN-BB0086--add--begin--
-            CALL i103_smd04_check()
-            LET g_smd02_t = g_smd[l_ac].smd02
-            #No.FUN-BB0086--add--end--
-         END IF
-
-      #No.FUN-BB0086--add--begin--
-      AFTER FIELD smd04
-         CALL i103_smd04_check()
-      #No.FUN-BB0086--add--end--
- 
-      AFTER FIELD smd06
-         IF NOT i103_smd06_check() THEN NEXT FIELD smd06 END IF   #No.FUN-BB0086
-
- 
-      AFTER FIELD smd03
-        IF g_smd_t.smd03 IS NOT NULL THEN
-           IF g_smd[l_ac].smd03 IS NULL THEN  #重要欄位空白,無效
-              LET g_smd[l_ac].smd03 = g_smd_t.smd03
-              NEXT FIELD smd03
-           END IF
-        END IF
-        IF NOT cl_null(g_smd[l_ac].smd03) THEN
-           IF g_smd[l_ac].smd03 != g_smd_t.smd03 OR g_smd_t.smd03 IS NULL THEN
-              SELECT * FROM gfe_file WHERE gfe01 = g_smd[l_ac].smd03
-              IF SQLCA.sqlcode THEN
-#                CALL cl_err(g_smd[l_ac].smd03,'aoo-012',0)   #No.FUN-660131
-                 CALL cl_err3("sel","gfe_file",g_smd[l_ac].smd03,"","aoo-012","","",1)  #No.FUN-660131
-                 LET g_smd[l_ac].smd03 = g_smd_t.smd03
-                 NEXT FIELD smd03
-               END IF
-             #檢查資料是否重覆(1992/09/25 Lee)
-              SELECT COUNT(*) INTO g_cnt FROM smd_file WHERE smd01=g_ima.ima01
-                 AND smd02=g_smd[l_ac].smd02 AND smd03=g_smd[l_ac].smd03
-              IF g_cnt>0 THEN
-                 CALL cl_err(g_smd[l_ac].smd03,-239,0)
-                 LET g_smd[l_ac].smd02 = g_smd_t.smd02
-                 LET g_smd[l_ac].smd03 = g_smd_t.smd03
-                 NEXT FIELD smd03
-              END IF
-           END IF
-           #No.FUN-BB0086--add--begin--
-           IF NOT i103_smd06_check() THEN NEXT FIELD smd03 END IF   
-           LET g_smd03_t = g_smd[l_ac].smd03
-           #No.FUN-BB0086--add--end--
-        END IF
- 
-      BEFORE DELETE                            #是否取消單身
-        IF g_smd_t.smd02 != ' ' AND g_smd_t.smd02 IS NOT NULL THEN
-
- 
-           IF NOT cl_delb(0,0) THEN
-              CANCEL DELETE
-           END IF
-           IF l_lock_sw = "Y" THEN
-              CALL cl_err("", -263, 1)
-              CANCEL DELETE
-           END IF
-           DELETE FROM smd_file
-            WHERE smd01 = g_ima.ima01
-              AND smd02 = g_smd[l_ac].smd02
-              AND smd03 = g_smd[l_ac].smd03
-           IF SQLCA.sqlcode THEN
-#             CALL cl_err(g_smd_t.smd02,SQLCA.sqlcode,0)   #No.FUN-660131
-              CALL cl_err3("del","smd_file",g_smd_t.smd02,"",SQLCA.sqlcode,"","",1)  #No.FUN-660131
-              CLOSE i103_bcl
-              ROLLBACK WORK
-              CANCEL DELETE
-           ELSE
-              LET g_rec_b=g_rec_b-1
-              DISPLAY g_rec_b TO FORMONLY.cn2
-              MESSAGE "Delete Ok"
-              CLOSE i103_bcl
-              COMMIT WORK
-           END IF
-
-        END IF
-
-      ON ROW CHANGE
-         IF INT_FLAG THEN                 #新增程式段
-            CALL cl_err('',9001,0)
-            LET INT_FLAG = 0
-            LET g_smd[l_ac].* = g_smd_t.*
-            CLOSE i103_bcl
-            ROLLBACK WORK
-            EXIT INPUT
-         END IF
-
- 
-         IF l_lock_sw = 'Y' THEN
-            CALL cl_err(g_smd[l_ac].smd02,-263,1)
-            LET g_smd[l_ac].* = g_smd_t.*
-         ELSE
-            LET g_smd[l_ac].smddate = g_today   #TQC-B90002
-            UPDATE smd_file SET smd02=g_smd[l_ac].smd02,
-                                smd03=g_smd[l_ac].smd03,
-                                smd04=g_smd[l_ac].smd04,
-                                smd06=g_smd[l_ac].smd06,
-                                smdacti=g_smd[l_ac].smdacti,
-                                #smdpos=g_smd[l_ac].smdpos #FUN-870100 #FUN-B50042 mark
-                                smddate=g_smd[l_ac].smddate   #TQC-B90002
-             WHERE smd01=g_ima.ima01
-               AND smd02=g_smd_t.smd02
-               AND smd03=g_smd_t.smd03
-            IF SQLCA.sqlcode THEN
-#              CALL cl_err(g_smd[l_ac].smd02,SQLCA.sqlcode,0)   #No.FUN-660131
-               CALL cl_err3("upd","smd_file",g_ima.ima01,g_smd_t.smd02,SQLCA.sqlcode,"","",1)  #No.FUN-660131
-               LET g_smd[l_ac].* = g_smd_t.*
-            ELSE
-               #CHI-D90022---begin
-               IF g_ima.ima31 <> g_ima.ima25 THEN
-                  CALL s_umfchk(g_ima.ima01,g_ima.ima31,g_ima.ima25)
-                       RETURNING g_sw,l_fac
-                  IF g_sw = '0' AND l_fac <> g_ima.ima31_fac THEN
-                     UPDATE ima_file
-                        SET ima31_fac = l_fac
-                      WHERE ima01 = g_ima.ima01
-                  END IF
-               END IF
-               IF g_ima.ima44 <> g_ima.ima25 THEN
-                  CALL s_umfchk(g_ima.ima01,g_ima.ima44,g_ima.ima25)
-                       RETURNING g_sw,l_fac
-                  IF g_sw = '0' AND l_fac <> g_ima.ima44_fac THEN
-                     UPDATE ima_file
-                        SET ima44_fac = l_fac
-                      WHERE ima01 = g_ima.ima01
-                  END IF
-               END IF
-               IF g_ima.ima55 <> g_ima.ima25 THEN
-                  CALL s_umfchk(g_ima.ima01,g_ima.ima55,g_ima.ima25)
-                       RETURNING g_sw,l_fac
-                  IF g_sw = '0' AND l_fac <> g_ima.ima55_fac THEN
-                     UPDATE ima_file
-                        SET ima55_fac = l_fac
-                      WHERE ima01 = g_ima.ima01
-                  END IF
-               END IF
-               IF g_ima.ima63 <> g_ima.ima25 THEN
-                  CALL s_umfchk(g_ima.ima01,g_ima.ima63,g_ima.ima25)
-                       RETURNING g_sw,l_fac
-                  IF g_sw = '0' AND l_fac <> g_ima.ima63_fac THEN
-                     UPDATE ima_file
-                        SET ima63_fac = l_fac
-                      WHERE ima01 = g_ima.ima01
-                  END IF
-               END IF
-               IF g_ima.ima86 <> g_ima.ima25 THEN
-                  CALL s_umfchk(g_ima.ima01,g_ima.ima86,g_ima.ima25)
-                       RETURNING g_sw,l_fac
-                  IF g_sw = '0' AND l_fac <> g_ima.ima86_fac THEN
-                     UPDATE ima_file
-                        SET ima86_fac = l_fac
-                      WHERE ima01 = g_ima.ima01
-                  END IF
-               END IF
-               #CHI-D90022---end
-               #CHI-DA0034---begin
-               IF g_smd[l_ac].smd02 <> g_smd[l_ac].smd03 THEN 
-                  UPDATE smd_file SET smd02=g_smd[l_ac].smd03,
-                                      smd04=g_smd[l_ac].smd06,
-                                      smd03=g_smd[l_ac].smd02,
-                                      smd06=g_smd[l_ac].smd04,
-                                      smdacti=g_smd[l_ac].smdacti,
-                                      smddate=g_smd[l_ac].smddate
-                   WHERE smd03 = g_smd_t.smd02 AND smd02 = g_smd_t.smd03 AND smd01 = g_ima.ima01
-                  IF SQLCA.sqlcode OR SQLCA.SQLERRD[3] = 0 THEN
-                     LET l_ac = ARR_CURR()
-                     INSERT INTO smd_file (smd01,smd02,smd03,smd04,smd06,smdacti,smddate)     
-                                   VALUES (g_ima.ima01,g_smd[l_ac].smd03,
-                                           g_smd[l_ac].smd02,g_smd[l_ac].smd06,
-                                           g_smd[l_ac].smd04,g_smd[l_ac].smdacti,g_smd[l_ac].smddate) 
-                     IF SQLCA.sqlcode THEN
-                        CALL cl_err3("ins","smd_file",g_smd[l_ac].smd02,"",SQLCA.sqlcode,"","",1) 
-                     ELSE
-                        MESSAGE 'INSERT O.K'
-                        LET g_rec_b = g_rec_b+1
-                        LET g_smd[g_rec_b].smd03=g_smd[l_ac].smd02
-                        LET g_smd[g_rec_b].smd02=g_smd[l_ac].smd03
-                        LET g_smd[g_rec_b].smd04=g_smd[l_ac].smd06
-                        LET g_smd[g_rec_b].smd06=g_smd[l_ac].smd04
-                        LET g_smd[g_rec_b].smdacti=g_smd[l_ac].smdacti
-                        LET g_smd[g_rec_b].smddate=g_smd[l_ac].smddate
-                        DISPLAY g_rec_b TO FORMONLY.cn2  
-                     END IF 
-                  ELSE
-                     #若update成功且反向資料處於同一螢幕時的DISPLAY
-                     FOR i = 1 TO g_smd.getLength()
-                        IF g_smd[i].smd03 = g_smd[l_ac].smd02 AND 
-                           g_smd[i].smd02 = g_smd[l_ac].smd03 THEN
-                           LET g_smd[i].smd03=g_smd[l_ac].smd02
-                           LET g_smd[i].smd02=g_smd[l_ac].smd03
-                           LET g_smd[i].smd04=g_smd[l_ac].smd06
-                           LET g_smd[i].smd06=g_smd[l_ac].smd04
-                           LET g_smd[i].smdacti=g_smd[l_ac].smdacti
-                           LET g_smd[i].smddate=g_smd[l_ac].smddate
-                           EXIT FOR 
-                        END IF
-                     END FOR 
-                  END IF
-               END IF   
-               #CHI-DA0034---end
-               MESSAGE 'UPDATE O.K'
-               COMMIT WORK
-            END IF
-         END IF
- 
-      AFTER ROW
-          LET l_ac = ARR_CURR()
-         #LET l_ac_t = l_ac    #FUN-D40030 Mark
-          IF INT_FLAG THEN
-             CALL cl_err('',9001,0)
-             LET INT_FLAG = 0
-             IF p_cmd='u' THEN
-                LET g_smd[l_ac].* = g_smd_t.*
-             #FUN-D40030--add--str--
-             ELSE
-                CALL g_smd.deleteElement(l_ac)
-                IF g_rec_b != 0 THEN
-                   LET g_action_choice = "detail"
-                   LET l_ac = l_ac_t
-                END IF
-             #FUN-D40030--add--end--
-             END IF
-             CLOSE i103_bcl
-             ROLLBACK WORK
-             EXIT INPUT
-          END IF
-          LET l_ac_t = l_ac    #FUN-D40030 Add
-          CLOSE i103_bcl
-          COMMIT WORK
- 
-
- 
-      ON ACTION CONTROLR
-         CALL cl_show_req_fields()
- 
-      ON ACTION CONTROLG
-          CALL cl_cmdask()
- 
-      ON ACTION create_unit
-          CASE
-             WHEN  INFIELD(smd02)
-                CALL cl_cmdrun("aooi101")
-             WHEN  INFIELD(smd03)
-                CALL cl_cmdrun("aooi101")
-             OTHERWISE EXIT CASE
-          END CASE
- 
-      ON ACTION controlp
-         CASE
-            WHEN INFIELD(smd02)
-               CALL cl_init_qry_var()
-               LET g_qryparam.form = "q_gfe"
-               LET g_qryparam.default1 = g_smd[l_ac].smd02
-               CALL cl_create_qry() RETURNING g_smd[l_ac].smd02
-#               CALL FGL_DIALOG_SETBUFFER( g_smd[l_ac].smd02 )
-                DISPLAY BY NAME g_smd[l_ac].smd02             #No.MOD-490344
-               NEXT FIELD smd02
-            WHEN INFIELD(smd03)
-               CALL cl_init_qry_var()
-               LET g_qryparam.form = "q_gfe"
-               LET g_qryparam.default1 = g_smd[l_ac].smd03
-               CALL cl_create_qry() RETURNING g_smd[l_ac].smd03
-#               CALL FGL_DIALOG_SETBUFFER( g_smd[l_ac].smd03 )
-                DISPLAY BY NAME g_smd[l_ac].smd03             #No.MOD-490344
-               NEXT FIELD smd03
-            OTHERWISE EXIT CASE
-         END CASE
- 
-      ON ACTION CONTROLF
-         CALL cl_set_focus_form(ui.Interface.getRootNode()) RETURNING g_fld_name,g_frm_name #Add on 040913
-         CALL cl_fldhelp(g_frm_name,g_fld_name,g_lang) #Add on 040913
- 
-      ON IDLE g_idle_seconds
-         CALL cl_on_idle()
-         CONTINUE INPUT
- 
-      ON ACTION about         #MOD-4C0121
-         CALL cl_about()      #MOD-4C0121
- 
-      ON ACTION help          #MOD-4C0121
-         CALL cl_show_help()  #MOD-4C0121
- 
-#No.FUN-6B0030------Begin--------------                                                                                             
-     ON ACTION controls                                                                                                             
-         CALL cl_set_head_visible("","AUTO")                                                                                        
-#No.FUN-6B0030-----End------------------    
- 
-   END INPUT
- 
-   CLOSE i103_bcl
-#FUN-B90104----add--begin---- 服飾行業，母料件更改后修改，更新子料件資料
-   IF s_industry('slk') THEN
-      IF g_ima.ima151='Y' THEN
-         CALL i103_ins_smd()
-      END IF
-   END IF
-#FUN-B90104----add--end---
-   COMMIT WORK
+      MESSAGE "单身功能！"
 END FUNCTION
 
-#FUN-B90104----add--begin---- 服飾行業，母料件更改后修改，更新子料件資料
+
 FUNCTION i103_ins_smd()
  DEFINE l_imx000 LIKE imx_file.imx000
  DEFINE l_sql    STRING
  DEFINE l_smd    RECORD LIKE smd_file.*
- DEFINE l_fac    LIKE ima_file.ima31_fac        #CHI-D90022
+ DEFINE l_fac    LIKE ima_file.ima31_fac        
 
    DECLARE smd_ins_upd CURSOR FOR SELECT * FROM smd_file WHERE smd01=g_ima.ima01
    DECLARE smd_ins1_upd CURSOR FOR SELECT imx000 FROM imx_file WHERE imx00=g_ima.ima01
@@ -1065,7 +526,7 @@ FUNCTION i103_ins_smd()
       END FOREACH
 
    END FOREACH
-   #CHI-D90022---begin
+
    IF g_ima.ima31 <> g_ima.ima25 THEN
       CALL s_umfchk(g_ima.ima01,g_ima.ima31,g_ima.ima25)
            RETURNING g_sw,l_fac
@@ -1111,90 +572,56 @@ FUNCTION i103_ins_smd()
           WHERE ima01 = g_ima.ima01
       END IF
    END IF
-   #CHI-D90022---end
+
 END FUNCTION
-#FUN-B90104----add--end---
+
  
 FUNCTION i103_b_askkey()
 DEFINE
-    l_wc2    LIKE type_file.chr1000       #No.FUN-680102 VARCHAR(200)
+    l_wc2    LIKE type_file.chr1000       
  
-    CONSTRUCT l_wc2 ON smd04,smd02,smd06,smd03,smdacti  #FUN-870100
+    CONSTRUCT l_wc2 ON smd04,smd02,smd06,smd03,smdacti  
          FROM s_smd[1].smd04,s_smd[1].smd02,s_smd[1].smd06,s_smd[1].smd03,
-              s_smd[1].smdacti  #FUN-870100 #FUN-B50042 remove POS
-              #No.FUN-580031 --start--     HCN
+              s_smd[1].smdacti  
+
               BEFORE CONSTRUCT
                  CALL cl_qbe_init()
-              #No.FUN-580031 --end--       HCN
+
        ON IDLE g_idle_seconds
           CALL cl_on_idle()
           CONTINUE CONSTRUCT
  
-      ON ACTION about         #MOD-4C0121
-         CALL cl_about()      #MOD-4C0121
+      ON ACTION about         
+         CALL cl_about()      
  
-      ON ACTION help          #MOD-4C0121
-         CALL cl_show_help()  #MOD-4C0121
+      ON ACTION help          
+         CALL cl_show_help()  
  
-      ON ACTION controlg      #MOD-4C0121
-         CALL cl_cmdask()     #MOD-4C0121
+      ON ACTION controlg      
+         CALL cl_cmdask()    
  
  
-		#No.FUN-580031 --start--     HCN
+
                  ON ACTION qbe_select
          	   CALL cl_qbe_select()
                  ON ACTION qbe_save
 		   CALL cl_qbe_save()
-		#No.FUN-580031 --end--       HCN
+
     END CONSTRUCT
     IF INT_FLAG THEN
        LET INT_FLAG = 0
        RETURN
     END IF
-    CALL i103_b_fill(l_wc2)
+    CALL i103_b_fill()
 END FUNCTION
  
-FUNCTION i103_b_fill(p_wc2)              #BODY FILL UP
-DEFINE
-    p_wc2           LIKE type_file.chr1000       #No.FUN-680102CHAR(200)
- 
-    LET g_rec_b = 0
-   #LET g_sql = "SELECT smd04,smd02,smd06,smd03,smdacti,smdpos",  #FUN-870100
-    LET g_sql = "SELECT smd04,smd02,smd06,smd03,smdacti,smdpos,smddate",  #TQC-B90002
-                " FROM smd_file",
-                " WHERE smd01 ='",g_ima.ima01,"' AND ",p_wc2 CLIPPED,
-                " ORDER BY 1"
-    PREPARE i103_pb FROM g_sql
-    DECLARE smd_cs                       #SCROLL CURSOR
-        CURSOR FOR i103_pb
- 
-    CALL g_smd.clear()
-    LET g_cnt = 1
-    FOREACH smd_cs INTO g_smd[g_cnt].*   #單身 ARRAY 填充
-       IF SQLCA.sqlcode THEN
-          CALL cl_err('foreach:',SQLCA.sqlcode,1)
-          EXIT FOREACH
-       END IF
-       LET g_cnt = g_cnt + 1
-      # genero shell add g_max_rec check START
-      IF g_cnt > g_max_rec THEN
-         CALL cl_err( '', 9035, 0 )
-	 EXIT FOREACH
-      END IF
-      # genero shell add g_max_rec check END
-    END FOREACH
-    CALL g_smd.deleteElement(g_cnt)
-    IF SQLCA.sqlcode THEN
-       CALL cl_err('foreach:',SQLCA.sqlcode,1)
-    END IF
-    LET g_rec_b = g_cnt - 1
-    DISPLAY g_rec_b TO FORMONLY.cn2
-    LET g_cnt = 0
+FUNCTION i103_b_fill()             
+      MESSAGE "单身功能！"
 END FUNCTION
  
  
 FUNCTION i103_bp(p_ud)
-   DEFINE   p_ud   LIKE type_file.chr1          #No.FUN-680102 VARCHAR(1)
+   DEFINE   p_ud   LIKE type_file.chr1          
  
  
    IF p_ud <> "G" OR g_action_choice = "detail" THEN
@@ -1211,54 +638,54 @@ FUNCTION i103_bp(p_ud)
  
       BEFORE ROW
          LET l_ac = ARR_CURR()
-      CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
+      CALL cl_show_fld_cont()                   
  
       ON ACTION query
          LET g_action_choice="query"
          EXIT DISPLAY
       ON ACTION first
          CALL i103_fetch('F')
-         CALL cl_navigator_setting(g_curs_index, g_row_count)   ###add in 040517
+         CALL cl_navigator_setting(g_curs_index, g_row_count)   
            IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  ######add in 040505
+         CALL fgl_set_arr_curr(1)  
            END IF
-           ACCEPT DISPLAY                   #No.FUN-530067 HCN TEST
+           ACCEPT DISPLAY                   
  
  
       ON ACTION previous
          CALL i103_fetch('P')
-         CALL cl_navigator_setting(g_curs_index, g_row_count)   ###add in 040517
+         CALL cl_navigator_setting(g_curs_index, g_row_count)   
            IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  ######add in 040505
+         CALL fgl_set_arr_curr(1)  
            END IF
-	ACCEPT DISPLAY                   #No.FUN-530067 HCN TEST
+	ACCEPT DISPLAY                   
  
  
       ON ACTION jump
          CALL i103_fetch('/')
-         CALL cl_navigator_setting(g_curs_index, g_row_count)   ###add in 040517
+         CALL cl_navigator_setting(g_curs_index, g_row_count)   
            IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  ######add in 040505
+         CALL fgl_set_arr_curr(1)  
            END IF
-	ACCEPT DISPLAY                   #No.FUN-530067 HCN TEST
+	ACCEPT DISPLAY                   
  
  
       ON ACTION next
          CALL i103_fetch('N')
-         CALL cl_navigator_setting(g_curs_index, g_row_count)   ###add in 040517
+         CALL cl_navigator_setting(g_curs_index, g_row_count)   
            IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  ######add in 040505
+         CALL fgl_set_arr_curr(1)  
            END IF
-	ACCEPT DISPLAY                   #No.FUN-530067 HCN TEST
+	ACCEPT DISPLAY                   
  
  
       ON ACTION last
          CALL i103_fetch('L')
-         CALL cl_navigator_setting(g_curs_index, g_row_count)   ###add in 040517
+         CALL cl_navigator_setting(g_curs_index, g_row_count)   
            IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  ######add in 040505
+         CALL fgl_set_arr_curr(1)  
            END IF
-	ACCEPT DISPLAY                   #No.FUN-530067 HCN TEST
+	ACCEPT DISPLAY                   
  
  
       ON ACTION reproduce
@@ -1277,8 +704,8 @@ FUNCTION i103_bp(p_ud)
  
       ON ACTION locale
          CALL cl_dynamic_locale()
-         CALL cl_show_fld_cont()                   #No.FUN-550037 hmf
-         CALL i103_mu_ui()   #TQC-710032
+         CALL cl_show_fld_cont()                   
+         CALL i103_mu_ui()   
  
       ON ACTION exit
          LET g_action_choice="exit"
@@ -1294,7 +721,7 @@ FUNCTION i103_bp(p_ud)
          EXIT DISPLAY
  
       ON ACTION cancel
-             LET INT_FLAG=FALSE 		#MOD-570244	mars
+             LET INT_FLAG=FALSE 		
          LET g_action_choice="exit"
          EXIT DISPLAY
  
@@ -1302,30 +729,25 @@ FUNCTION i103_bp(p_ud)
          CALL cl_on_idle()
          CONTINUE DISPLAY
  
-      ON ACTION about         #MOD-4C0121
-         CALL cl_about()      #MOD-4C0121
+      ON ACTION about        
+         CALL cl_about()      
  
  
-#@    ON ACTION 相關文件
-       ON ACTION related_document  #No.MOD-470515
+       #ON ACTION 相关文件
+       ON ACTION related_document  
          LET g_action_choice="related_document"
          EXIT DISPLAY
  
-      ON ACTION exporttoexcel   #No.FUN-4B0020
+      ON ACTION exporttoexcel   
          LET g_action_choice = 'exporttoexcel'
          EXIT DISPLAY
  
-      # No.FUN-530067 --start--
       AFTER DISPLAY
          CONTINUE DISPLAY
-      # No.FUN-530067 ---end---
- 
-#No.FUN-6B0030------Begin--------------                                                                                             
+                                                                                           
      ON ACTION controls                                                                                                             
          CALL cl_set_head_visible("","AUTO")                                                                                        
-#No.FUN-6B0030-----End------------------    
- 
-      #No.FUN-7C0050 add
+
       &include "qry_string.4gl"
    END DISPLAY
    CALL cl_set_act_visible("accept,cancel", TRUE)
@@ -1337,7 +759,6 @@ FUNCTION i103_out()
 END FUNCTION
  
  
-#-----TQC-710032---------
 FUNCTION i103_mu_ui()
     CALL cl_set_comp_visible("ima906",g_sma.sma115 = 'Y')
     CALL cl_set_comp_visible("group043",g_sma.sma115 = 'Y')
@@ -1352,9 +773,8 @@ FUNCTION i103_mu_ui()
        CALL cl_set_comp_att_text("ima907",g_msg CLIPPED)
     END IF
 END FUNCTION
-#-----END TQC-710032-----
 
-#No.FUN-BB0086---add---begin---
+
 FUNCTION i103_smd06_check()
    IF NOT cl_null(g_smd[l_ac].smd06) AND NOT cl_null(g_smd[l_ac].smd03) THEN
       #IF cl_null(g_smd[l_ac].smd06) OR cl_null(g_smd03_t) OR g_smd_t.smd06 != g_smd[l_ac].smd06 OR g_smd03_t != g_smd[l_ac].smd03 THEN    #TQC-C20183
@@ -1380,4 +800,4 @@ FUNCTION i103_smd04_check()
       END IF
    END IF
 END FUNCTION
-#No.FUN-BB0086---add---end---
+
