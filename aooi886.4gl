@@ -584,8 +584,8 @@ END FUNCTION
  
  
 FUNCTION i103_bp(p_ud)
+
    DEFINE   p_ud   LIKE type_file.chr1          
- 
  
    IF p_ud <> "G" OR g_action_choice = "detail" THEN
       RETURN
@@ -606,61 +606,67 @@ FUNCTION i103_bp(p_ud)
       ON ACTION query
          LET g_action_choice="query"
          EXIT DISPLAY
+
       ON ACTION first
          CALL i103_fetch('F')
          CALL cl_navigator_setting(g_curs_index, g_row_count)   
-           IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  
-           END IF
-           ACCEPT DISPLAY                   
- 
+
+         IF g_rec_b != 0 THEN
+            CALL fgl_set_arr_curr(1)  
+         END IF
+         ACCEPT DISPLAY                   
  
       ON ACTION previous
          CALL i103_fetch('P')
-         CALL cl_navigator_setting(g_curs_index, g_row_count)   
-           IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  
-           END IF
-	ACCEPT DISPLAY                   
+         CALL cl_navigator_setting(g_curs_index, g_row_count)  
+
+         IF g_rec_b != 0 THEN
+            CALL fgl_set_arr_curr(1)  
+         END IF
+	      ACCEPT DISPLAY                   
  
  
       ON ACTION jump
          CALL i103_fetch('/')
          CALL cl_navigator_setting(g_curs_index, g_row_count)   
-           IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  
-           END IF
-	ACCEPT DISPLAY                   
+
+         IF g_rec_b != 0 THEN
+            CALL fgl_set_arr_curr(1)  
+         END IF
+	      ACCEPT DISPLAY                   
  
  
       ON ACTION next
          CALL i103_fetch('N')
-         CALL cl_navigator_setting(g_curs_index, g_row_count)   
-           IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  
-           END IF
-	ACCEPT DISPLAY                   
+         CALL cl_navigator_setting(g_curs_index, g_row_count)  
+
+         IF g_rec_b != 0 THEN
+            CALL fgl_set_arr_curr(1)  
+         END IF
+	      ACCEPT DISPLAY                   
  
  
       ON ACTION last
          CALL i103_fetch('L')
          CALL cl_navigator_setting(g_curs_index, g_row_count)   
-           IF g_rec_b != 0 THEN
-         CALL fgl_set_arr_curr(1)  
-           END IF
-	ACCEPT DISPLAY                   
- 
+         IF g_rec_b != 0 THEN
+            CALL fgl_set_arr_curr(1)  
+         END IF
+	      ACCEPT DISPLAY                   
  
       ON ACTION reproduce
          LET g_action_choice="reproduce"
          EXIT DISPLAY
+
       ON ACTION detail
          LET g_action_choice="detail"
          LET l_ac = 1
          EXIT DISPLAY
+
       ON ACTION output
          LET g_action_choice="output"
          EXIT DISPLAY
+
       ON ACTION help
          LET g_action_choice="help"
          EXIT DISPLAY
@@ -694,7 +700,6 @@ FUNCTION i103_bp(p_ud)
  
       ON ACTION about        
          CALL cl_about()      
- 
  
        #ON ACTION 相关文件
        ON ACTION related_document  
