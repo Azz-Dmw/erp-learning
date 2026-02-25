@@ -335,31 +335,42 @@ FUNCTION i103_menu()
    WHILE TRUE
       CALL i103_bp("G")
       CASE g_action_choice
+
+      #查询功能按钮
          WHEN "query"
             IF cl_chk_act_auth() THEN
                CALL i103_q()
             END IF
+
+         #复制功能按钮
          WHEN "reproduce"
             IF cl_chk_act_auth() THEN
                #CALL i103_copy()
                MESSAGE "复制功能！"
             END IF
+
+         #单身功能按钮
          WHEN "detail"
             IF cl_chk_act_auth() THEN
                CALL i103_b()
             ELSE
                LET g_action_choice = NULL
             END IF
+         
+         #列印功能按钮
          WHEN "output"
-            IF cl_chk_act_auth()
-               THEN CALL i103_out()
+            IF cl_chk_act_auth() THEN 
+               CALL i103_out()
             END IF
+
          WHEN "help"
             CALL cl_show_help()
          WHEN "exit"
             EXIT WHILE
          WHEN "controlg"
             CALL cl_cmdask()
+         
+         #相关附件功能按钮
           WHEN "related_document"  #No.MOD-470515
             IF cl_chk_act_auth() THEN
                IF g_ima.ima01 IS NOT NULL THEN
@@ -368,9 +379,12 @@ FUNCTION i103_menu()
                   CALL cl_doc()
                END IF
             END IF
-         WHEN "exporttoexcel"   #No.FUN-4B0020
+
+         #相导出Excel功能按钮
+         WHEN "exporttoexcel"   
             IF cl_chk_act_auth() THEN
-              CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_smd),'','')
+              #CALL cl_export_to_excel(ui.Interface.getRootNode(),base.TypeInfo.create(g_smd),'','')
+              MESSAGE "导出Excel功能！"
             END IF
  
       END CASE
@@ -1319,67 +1333,7 @@ END FUNCTION
  
  
 FUNCTION i103_out()
-DEFINE
-    l_i             LIKE type_file.num5,          #No.FUN-680102 SMALLINT
-    sr              RECORD
-        smd01       LIKE smd_file.smd01,   #料件單號
-        smd02       LIKE smd_file.smd02,   #甲單位
-        smd03       LIKE smd_file.smd03,   #甲單位數量
-        smd04       LIKE smd_file.smd04,   #乙單位
-        smd06       LIKE smd_file.smd06,   #乙單位數量
-        smd05       LIKE smd_file.smd05,   #說明
-        smdacti     LIKE smd_file.smdacti  #說明
-                    END RECORD,
-    l_name          LIKE type_file.chr20,               #External(Disk) file name        #No.FUN-680102 VARCHAR(20)
-    l_za05          LIKE za_file.za05,                   #No.FUN-680102 VARCHAR(40)
-    l_ima02         LIKE ima_file.ima02                 #No.FUN-760083
-    IF g_wc IS NULL THEN
-    #   CALL cl_err('',-400,0)
-        CALL cl_err('','9057',0)
-        RETURN
-    END IF
-    CALL cl_wait()
-    CALL cl_del_data(l_table)                           #No.FUN-760083
-    LET g_str=''                                        #No.FUN-760083
-    SELECT zz05 INTO g_zz05 FROM zz_file WHERE zz01=g_prog  #No.FUN-760083
-#   LET l_name = 'aooi103.out'
-    CALL cl_outnam('aooi103') RETURNING l_name
-    SELECT zo02 INTO g_company FROM zo_file WHERE zo01 = g_lang
-    LET g_sql="SELECT smd01,smd02,smd03,",
-              "smd04,smd06,smd05,smdacti",
-              " FROM smd_file,ima_file",
-              " WHERE ima01=smd01 AND ",g_wc CLIPPED,
-              " AND ",g_wc2 CLIPPED
-    PREPARE i103_p1 FROM g_sql                # RUNTIME 編譯
-    DECLARE i103_co                         # SCROLL CURSOR
-        CURSOR FOR i103_p1
- 
-    #START REPORT i103_rep TO l_name                        #No.FUN-760083
- 
-    FOREACH i103_co INTO sr.*
-        IF SQLCA.sqlcode THEN
-            CALL cl_err('foreach:',SQLCA.sqlcode,1)    
-            EXIT FOREACH
-            END IF
-        IF sr.smd01 IS NULL THEN LET sr.smd01 = ' ' END IF
-        SELECT ima02 INTO l_ima02 FROM ima_file WHERE ima01=sr.smd01     #No.FUN-760083
-        EXECUTE insert_prep USING  sr.*,l_ima02             #No.FUN-760083
-        #OUTPUT TO REPORT i103_rep(sr.*)                    #No.FUN-760083
-    END FOREACH
- 
-    #FINISH REPORT i103_rep                                 #No.FUN-760083
- 
-    CLOSE i103_co
-    ERROR ""
-    #CALL cl_prt(l_name,' ','1',g_len)                        #No.FUN-760083
-    LET g_sql="SELECT * FROM ",g_cr_db_str CLIPPED,l_table CLIPPED      #No.FUN-760083
-    IF g_zz05='Y' THEN                                             #No.FUN-760083
-       CALL cl_wcchp(g_wc,'ima01,ima02,ima08,ima06,ima05,ima25,ima44,ima63,ima55,   #No.FUN-760083                                              
-                           ima906,ima907')                         #No.FUN-760083
-       RETURNING g_wc                                              #No.FUN-760083
-    END IF                                                         #No.FUN-760083
-    LET g_str=g_wc                                                 #No.FUN-760083
-    CALL cl_prt_cs3("aooi103","aooi103",g_sql,g_str)               #No.FUN-760083
+         MESSAGE "打印功能！"
 END FUNCTION
  
  
