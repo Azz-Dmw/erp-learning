@@ -101,12 +101,10 @@ MAIN
 #----------------------------#
 # 打开窗口
 #----------------------------#
-    LET p_row = 4 LET p_col = 26
+    LET p_row = 4 LET p_col = 32
 
-    MESSAGE "准备打开窗口..."
     OPEN WINDOW i886_w AT p_row,p_col
         WITH FORM "coo/42f/cooi886" ATTRIBUTE (STYLE = g_win_style CLIPPED)
-   MESSAGE "窗口已打开"
 
     CALL cl_ui_init()  # 初始化UI控件
 
