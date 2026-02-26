@@ -11,8 +11,6 @@ GLOBALS "../../config/top.global"       # 引入全局变量
 #----------------------------#
 DEFINE
     g_ima       RECORD LIKE ima_file.*,   # 当前料件基本资料
-    g_ima_t     RECORD LIKE ima_file.*,   # 旧料件基本资料
-    g_ima01_t   LIKE ima_file.ima01,      # 旧料件编号
     g_smd       DYNAMIC ARRAY OF RECORD   # 程序变量数组
         smd04   LIKE smd_file.smd04,     # 甲单位数量
         smd02   LIKE smd_file.smd02,     # 甲单位
@@ -22,49 +20,18 @@ DEFINE
         smdpos  LIKE smd_file.smdpos,    
         smddate LIKE smd_file.smddate    # 最近修改日期 
     END RECORD,
-
-    g_smd_t    RECORD                       # 程序变量旧值
-        smd04   LIKE smd_file.smd04,
-        smd02   LIKE smd_file.smd02,
-        smd06   LIKE smd_file.smd06,
-        smd03   LIKE smd_file.smd03,
-        smdacti LIKE smd_file.smdacti,
-        smdpos  LIKE smd_file.smdpos,
-        smddate LIKE smd_file.smddate
-    END RECORD,
     
-    g_smd_tm   RECORD                       # 临时旧值
-        smd04   LIKE smd_file.smd04,
-        smd02   LIKE smd_file.smd02,
-        smd06   LIKE smd_file.smd06,
-        smd03   LIKE smd_file.smd03,
-        smdacti LIKE smd_file.smdacti,
-        smdpos  LIKE smd_file.smdpos,
-        smddate LIKE smd_file.smddate
-    END RECORD,
-    
-    g_wc,g_wc2,g_sql STRING,                # SQL语句/临时字符串
-    
+    g_sql STRING,                # SQL语句/临时字符串
     g_argv1      LIKE ima_file.ima01,       # 程序参数（料号）
     g_rec_b      LIKE type_file.num5,       # 单身笔数
-    i            LIKE type_file.num5,       # 索引
-    l_ac         LIKE type_file.num5        # 当前数组计数
+    g_msg        LIKE ze_file.ze03,
+    g_row_count         LIKE type_file.num10,       
+    g_curs_index        LIKE type_file.num10,
+    g_forupd_sql STRING,                    # SELECT FOR UPDATE
+    l_table      STRING                     # 临时表名
+ 
+   
     
-DEFINE
-    g_cnt        LIKE type_file.num10,      # 通用计数器
-    g_i          LIKE type_file.num5,
-    g_msg        LIKE type_file.chr1000,    # 消息
-    g_forupd_sql STRING,                     # SELECT FOR UPDATE
-    g_row_count  LIKE type_file.num10,
-    g_curs_index LIKE type_file.num10,
-    g_jump       LIKE type_file.num10,
-    mi_no_ask    LIKE type_file.num5,
-    l_table      STRING,                     # 临时表名
-    g_str        STRING,
-    g_smd02_t    LIKE smd_file.smd02,
-    g_smd03_t    LIKE smd_file.smd03,
-    g_sw         LIKE type_file.num5
-
 #----------------------------#
 # 主程序
 #----------------------------#
@@ -140,11 +107,6 @@ MAIN
 
     CALL cl_ui_init()  # 初始化UI控件
 
-    # 控制字段显示
-    IF g_aza.aza88 = 'N' THEN
-        CALL cl_set_comp_visible('smdpos',FALSE)
-    END IF
-
     # 调用子菜单界面
     CALL i103_mu_ui()
     CALL cl_set_comp_visible('smdpos',FALSE)
@@ -175,6 +137,9 @@ MAIN
     
 END MAIN
  
+#----------------------------#
+# 主菜单
+#----------------------------#
 FUNCTION i103_menu()
  
    WHILE TRUE
@@ -196,10 +161,10 @@ FUNCTION i103_menu()
          #复制功能按钮
          WHEN "reproduce"
             IF cl_chk_act_auth() THEN
-               #CALL i103_copy()
                MESSAGE "复制功能！"
             END IF
 
+         #离开功能按钮
          WHEN "exit"
             EXIT WHILE
 
@@ -220,12 +185,9 @@ FUNCTION i103_menu()
    END WHILE
 END FUNCTION
  
-#Query 查詢
-FUNCTION i103_q()
-      MESSAGE "查询功能！"
-END FUNCTION
- 
- 
+#----------------------------#
+# 菜单显示及操作
+#----------------------------#
 FUNCTION i103_bp(p_ud)
 
    DEFINE   p_ud   LIKE type_file.chr1          
@@ -239,12 +201,8 @@ FUNCTION i103_bp(p_ud)
    CALL cl_set_act_visible("accept,cancel", FALSE)
    DISPLAY ARRAY g_smd TO s_smd.* ATTRIBUTE(COUNT=g_rec_b,UNBUFFERED)
  
-      BEFORE DISPLAY
-         CALL cl_navigator_setting( g_curs_index, g_row_count )
- 
-      BEFORE ROW
-         LET l_ac = ARR_CURR()
-      CALL cl_show_fld_cont() 
+      {BEFORE DISPLAY
+         CALL cl_navigator_setting( g_curs_index, g_row_count )}
 
       #新增
       ON ACTION insert
@@ -277,12 +235,6 @@ FUNCTION i103_bp(p_ud)
          LET g_action_choice="controlg"
          EXIT DISPLAY
  
-      #确认
-      ON ACTION accept
-         LET g_action_choice="detail"
-         LET l_ac = ARR_CURR()
-         EXIT DISPLAY
- 
       #放弃
       ON ACTION cancel
              LET INT_FLAG=FALSE 		
@@ -311,9 +263,16 @@ FUNCTION i103_bp(p_ud)
 
 END FUNCTION
  
- 
+#----------------------------#
+# 界面显示控制
+#----------------------------#
+{界面显示控制：根据配置或权限控制哪些控件可见。
+动态文本提示：根据配置或状态动态显示提示信息。
+UI 初始化或刷新时调用：在主程序里，每次打开窗口或切换语言时会调用 i103_mu_ui()，保证界面显示正确。}
 FUNCTION i103_mu_ui()
-
+      {cl_set_comp_visible(控件名, 条件) 用来设置某个界面控件是否可见。
+      g_sma.sma115 是全局配置或权限标志，如果等于 'Y'，就显示对应控件，否则隐藏。
+      也就是说，这里根据 用户权限或系统参数 决定界面上哪些输入框或分组显示}
     CALL cl_set_comp_visible("ima906",g_sma.sma115 = 'Y')
     CALL cl_set_comp_visible("group043",g_sma.sma115 = 'Y')
     CALL cl_set_comp_visible("ima907",g_sma.sma115 = 'Y')
@@ -331,6 +290,13 @@ FUNCTION i103_mu_ui()
 
 END FUNCTION
 
+
+#----------------------------#
+# 查詢功能实现
+#----------------------------#
+FUNCTION i103_q()
+      MESSAGE "查询功能！"
+END FUNCTION
 
 #====================================================
 # i103_a() 新增
