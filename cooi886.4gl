@@ -292,7 +292,7 @@ FUNCTION i886_mu_ui()
 END FUNCTION
 
 #====================================================
-# i103_a() 新增
+# 新增功能实现
 #====================================================
 FUNCTION i103_a()
 
@@ -302,9 +302,137 @@ END FUNCTION
 
 
 #----------------------------#
-# 查詢功能实现
+# 查詢功能实现主流程
 #----------------------------#
 FUNCTION i886_q()
-      MESSAGE "查询功能！"
+
+    #1.输入查询条件
+    CALL i886_cs()
+    IF cl_null(g_argv1) THEN 
+        RETURN 
+    END IF 
+
+    #2.读取主档
+    CALL i886_fetch()
+    IF STATUS THEN 
+        CALL cl_msg("查无资料！")
+        RETURN 
+    END IF 
+
+    #3.查询单身资料
+    CALL i886_b_fill()
+
+    # 4. 刷新画面显示
+    CALL i886_show()  # 显示主档
+
+
 END FUNCTION
+
+#-------------------------------------------------
+# 查询条件输入
+#-------------------------------------------------
+FUNCTION i886_cs()
+
+    CLEAR FORM  #输入查询条件之前清除画面档form
+
+    #开窗输入
+    INPUT BY NAME g_ima.ima01 WITHOUT DEFAULTS 
+
+    #主键变量赋值
+    LET g_argv1 = g_ima.ima01
+
+    DISPLAY "你输入的料件编号：",g_argv1
+
+END FUNCTION 
+
+#-------------------------------------------------
+# 读取主档
+#-------------------------------------------------
+FUNCTION i886_fetch()
+
+    DEFINE l_cnt LIKE type_file.num5    #声明局部变量记录单头是否有数据
+
+    SELECT COUNT(*)
+      INTO l_cnt
+      FROM ima_file
+     WHERE ima01 = g_argv1
+
+    DISPLAY  "COUNT = ", l_cnt
+
+    #单头没数据直接退出
+    IF l_cnt = 0 THEN
+        RETURN
+    END IF
+
+    #有数据将数据赋值给g_ima.*
+    SELECT *
+      INTO g_ima.*
+      FROM ima_file
+     WHERE ima01 = g_argv1
+
+     DISPLAY "单头数据：",g_ima.*
+     DISPLAY "品名=", g_ima.ima02
+
+END FUNCTION
+
+
+#-------------------------------------------------
+# 单身资料遍历填充
+#-------------------------------------------------
+FUNCTION i886_b_fill()
+
+    DEFINE l_cnt LIKE type_file.num5
+    DEFINE l_smd_rec RECORD
+        smd04   LIKE smd_file.smd04,
+        smd02   LIKE smd_file.smd02,
+        smd06   LIKE smd_file.smd06,
+        smd03   LIKE smd_file.smd03,
+        smdacti LIKE smd_file.smdacti,
+        smdpos  LIKE smd_file.smdpos,
+        smddate LIKE smd_file.smddate
+    END RECORD
+
+    # 清空数组
+    LET g_smd = NULL    # 重置数组长度为0
+    LET g_rec_b = 0
+
+    # 查询循环遍历单身资料
+    #声明游标
+    DECLARE smd_cur CURSOR FOR
+        SELECT smd04,smd02,smd06,smd03,smdacti,smdpos,smddate
+        FROM smd_file
+        WHERE smd01 = g_argv1
+        ORDER BY smdpos
+
+    LET l_cnt = 0
+    #循环遍历
+    FOREACH smd_cur INTO l_smd_rec.*
+        LET l_cnt = l_cnt + 1
+        LET g_smd[l_cnt].smd04   = l_smd_rec.smd04
+        LET g_smd[l_cnt].smd02   = l_smd_rec.smd02
+        LET g_smd[l_cnt].smd06   = l_smd_rec.smd06
+        LET g_smd[l_cnt].smd03   = l_smd_rec.smd03
+        LET g_smd[l_cnt].smdacti = l_smd_rec.smdacti
+        LET g_smd[l_cnt].smdpos  = l_smd_rec.smdpos
+        LET g_smd[l_cnt].smddate = l_smd_rec.smddate
+    END FOREACH
+
+    LET g_rec_b = l_cnt
+
+    DISPLAY "单身条数： ",g_rec_b
+
+END FUNCTION
+
+#-------------------------------------------------
+# 显示主档资料
+#-------------------------------------------------
+FUNCTION i886_show()
+
+    CLEAR FORM  #显示主档之前先清理画面档form
+
+    #显示单头数据
+    DISPLAY BY NAME g_ima.ima01,g_ima.ima02,g_ima.ima08,g_ima.ima06,g_ima.ima05,g_ima.ima25
+    DISPLAY BY NAME g_ima.ima44,g_ima.ima31,g_ima.ima63,g_ima.ima55
+    
+END FUNCTION 
 
