@@ -1,5 +1,5 @@
 # Prog. Version..: '5.30.15-14.10.14(00010)' 
-# Descriptions...: 料件單位換算資料維護作業(aooi886)
+# Descriptions...: 料件单位换算资料维护作业(aooi886)
 # Date & Author..: 2026/02/25 By Azz
 
 DATABASE ds                             # 指定数据库连接
@@ -9,28 +9,43 @@ GLOBALS "../../config/top.global"       # 引入全局变量
 #----------------------------#
 # 变量定义
 #----------------------------#
-DEFINE
-    g_ima       RECORD LIKE ima_file.*,   # 当前料件基本资料
-    g_smd       DYNAMIC ARRAY OF RECORD   # 程序变量数组
+# 当前料件基本资料
+DEFINE g_ima RECORD LIKE ima_file.*
+
+# 程序变量数组
+    DEFINE g_smd DYNAMIC ARRAY OF RECORD
         smd04   LIKE smd_file.smd04,     # 甲单位数量
         smd02   LIKE smd_file.smd02,     # 甲单位
         smd06   LIKE smd_file.smd06,     # 乙单位数量
         smd03   LIKE smd_file.smd03,     # 乙单位
         smdacti LIKE smd_file.smdacti,   # 数据有效码
-        smdpos  LIKE smd_file.smdpos,    
-        smddate LIKE smd_file.smddate    # 最近修改日期 
-    END RECORD,
-    
-    g_sql         STRING,                # SQL语句/临时字符串
-    g_argv1       LIKE ima_file.ima01,       # 程序参数（料号）
-    g_rec_b       LIKE type_file.num5,       # 单身笔数
-    g_msg         LIKE ze_file.ze03,
-    g_row_count   LIKE type_file.num10,       
-    g_curs_index  LIKE type_file.num10,
-    g_forupd_sql  STRING,                    # SELECT FOR UPDATE
-    l_table       STRING                     # 临时表名
+        smdpos  LIKE smd_file.smdpos,
+        smddate LIKE smd_file.smddate    # 最近修改日期
+    END RECORD
+
+# SQL语句/临时字符串
+    DEFINE g_sql STRING
+    DEFINE g_forupd_sql STRING
+    DEFINE l_table STRING                     # 临时表名
+    DEFINE g_wc STRING
+
+# 程序参数
+    DEFINE g_argv1 LIKE ima_file.ima01      # 料号
+    DEFINE g_rec_b LIKE type_file.num5       # 单身笔数
+    DEFINE g_msg LIKE ze_file.ze03
+    DEFINE g_row_count LIKE type_file.num10
+    DEFINE g_curs_index LIKE type_file.num10
+
+# 查询结果数组，每条记录结构同 g_ima
+    DEFINE g_ima_list DYNAMIC ARRAY OF RECORD
+        g_ima RECORD LIKE ima_file.*
+    END RECORD
+
+# 当前显示的索引和查询总数
+    DEFINE g_curr_index INTEGER
+
+    DEFINE g_total INTEGER
  
-   
     
 #----------------------------#
 # 主程序
@@ -109,7 +124,7 @@ MAIN
     CALL cl_ui_init()  # 初始化UI控件
 
     # 调用子菜单界面
-    CALL i886_mu_ui()
+    #CALL i886_mu_ui()
     CALL cl_set_comp_visible('smdpos',FALSE)
 
     #----------------------------#
@@ -224,7 +239,7 @@ FUNCTION i103_bp(p_ud)
       ON ACTION locale
          CALL cl_dynamic_locale()
          CALL cl_show_fld_cont()                   
-         CALL i886_mu_ui()   
+         #CALL i886_mu_ui()   
  
       #退出
       ON ACTION exit
@@ -263,33 +278,7 @@ FUNCTION i103_bp(p_ud)
    CALL cl_set_act_visible("accept,cancel", TRUE)
 
 END FUNCTION
- 
-#----------------------------#
-# 界面显示控制
-#----------------------------#
-{界面显示控制：根据配置或权限控制哪些控件可见。
-动态文本提示：根据配置或状态动态显示提示信息。
-UI 初始化或刷新时调用：在主程序里，每次打开窗口或切换语言时会调用 i886_mu_ui()，保证界面显示正确。}
-FUNCTION i886_mu_ui()
-      {cl_set_comp_visible(控件名, 条件) 用来设置某个界面控件是否可见。
-      g_sma.sma115 是全局配置或权限标志，如果等于 'Y'，就显示对应控件，否则隐藏。
-      也就是说，这里根据 用户权限或系统参数 决定界面上哪些输入框或分组显示}
-    CALL cl_set_comp_visible("ima906",g_sma.sma115 = 'Y')
-    CALL cl_set_comp_visible("group043",g_sma.sma115 = 'Y')
-    CALL cl_set_comp_visible("ima907",g_sma.sma115 = 'Y')
-    CALL cl_set_comp_visible("group044",g_sma.sma115='Y')
 
-    IF g_sma.sma122='1' THEN
-       CALL cl_getmsg('asm-302',g_lang) RETURNING g_msg
-       CALL cl_set_comp_att_text("ima907",g_msg CLIPPED)
-    END IF
-
-    IF g_sma.sma122='2' THEN
-       CALL cl_getmsg('asm-304',g_lang) RETURNING g_msg
-       CALL cl_set_comp_att_text("ima907",g_msg CLIPPED)
-    END IF
-
-END FUNCTION
 
 #====================================================
 # 新增功能实现
@@ -308,7 +297,7 @@ FUNCTION i886_q()
 
     #1.输入查询条件
     CALL i886_cs()
-    IF cl_null(g_argv1) THEN 
+    IF cl_null(g_wc) THEN 
         RETURN 
     END IF 
 
@@ -335,13 +324,10 @@ FUNCTION i886_cs()
 
     CLEAR FORM  #输入查询条件之前清除画面档form
 
-    #开窗输入
-    INPUT BY NAME g_ima.ima01 WITHOUT DEFAULTS 
+    #CONSTRUCT把用户在画面上输入的条件转换成 SQL 的 WHERE 条件字符串
+    CONSTRUCT BY NAME g_wc ON ima01
 
-    #主键变量赋值
-    LET g_argv1 = g_ima.ima01
-
-    DISPLAY "你输入的料件编号：",g_argv1
+    DISPLAY "生成的WHERE条件：", g_wc
 
 END FUNCTION 
 
@@ -351,27 +337,51 @@ END FUNCTION
 FUNCTION i886_fetch()
 
     DEFINE l_cnt LIKE type_file.num5    #声明局部变量记录单头是否有数据
+    DEFINE l_rec RECORD LIKE ima_file.*
+    DEFINE l_sql STRING
 
-    SELECT COUNT(*)
-      INTO l_cnt
-      FROM ima_file
-     WHERE ima01 = g_argv1
+    # 清空数组
+    LET g_total = 0
+    LET g_curr_index = 0
 
-    DISPLAY  "COUNT = ", l_cnt
+    #动态统计笔数
+    LET l_sql = "SELECT COUNT(*) FROM ima_file WHERE ", g_wc
+
+    PREPARE stmt_cnt FROM l_sql
+    EXECUTE stmt_cnt INTO l_cnt
+
+    DISPLAY  "总笔数:", l_cnt
+
+    LET g_row_count = l_cnt
 
     #单头没数据直接退出
-    IF l_cnt = 0 THEN
+    IF g_row_count = 0 THEN
+        CALL cl_msg("查无资料！")
         RETURN
     END IF
 
-    #有数据将数据赋值给g_ima.*
-    SELECT *
-      INTO g_ima.*
-      FROM ima_file
-     WHERE ima01 = g_argv1
+    # 如果只查到一笔，自动带出资料
+    IF g_row_count >= 1 THEN
+    
+        LET l_sql =
+        "SELECT * FROM (",
+        "SELECT ima01,ima02,ima08,ima06,ima05,ima25,",
+        "ima44,ima31,ima63,ima55 ",
+        "FROM ima_file WHERE ",
+        g_wc," ORDER BY ima01",") WHERE ROWNUM = 1"
 
-     DISPLAY "单头数据：",g_ima.*
-     DISPLAY "品名=", g_ima.ima02
+        DISPLAY "查询SQL：",l_sql
+
+        PREPARE stmt_one FROM l_sql
+        DECLARE c_one CURSOR FOR stmt_one
+
+        FOREACH c_one INTO g_ima.*
+            EXIT FOREACH
+        END FOREACH
+
+        DISPLAY "字段：",g_ima.*
+        
+    END IF
 
 END FUNCTION
 
@@ -396,25 +406,24 @@ FUNCTION i886_b_fill()
     LET g_smd = NULL    # 重置数组长度为0
     LET g_rec_b = 0
 
+    DISPLAY "料件编号：",g_ima.ima01
+
     # 查询循环遍历单身资料
     #声明游标
     DECLARE smd_cur CURSOR FOR
         SELECT smd04,smd02,smd06,smd03,smdacti,smdpos,smddate
         FROM smd_file
-        WHERE smd01 = g_argv1
+        WHERE smd01 = g_ima.ima01
         ORDER BY smdpos
 
     LET l_cnt = 0
+    
     #循环遍历
     FOREACH smd_cur INTO l_smd_rec.*
         LET l_cnt = l_cnt + 1
-        LET g_smd[l_cnt].smd04   = l_smd_rec.smd04
-        LET g_smd[l_cnt].smd02   = l_smd_rec.smd02
-        LET g_smd[l_cnt].smd06   = l_smd_rec.smd06
-        LET g_smd[l_cnt].smd03   = l_smd_rec.smd03
-        LET g_smd[l_cnt].smdacti = l_smd_rec.smdacti
-        LET g_smd[l_cnt].smdpos  = l_smd_rec.smdpos
-        LET g_smd[l_cnt].smddate = l_smd_rec.smddate
+
+        LET g_smd[l_cnt].* = l_smd_rec.*
+
     END FOREACH
 
     LET g_rec_b = l_cnt
@@ -433,6 +442,11 @@ FUNCTION i886_show()
     #显示单头数据
     DISPLAY BY NAME g_ima.ima01,g_ima.ima02,g_ima.ima08,g_ima.ima06,g_ima.ima05,g_ima.ima25
     DISPLAY BY NAME g_ima.ima44,g_ima.ima31,g_ima.ima63,g_ima.ima55
+
+    #显示总笔数
+    DISPLAY g_row_count TO FORMONLY.cnt
+    DISPLAY g_row_count TO FORMONLY.cn2
     
 END FUNCTION 
+
 
