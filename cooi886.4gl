@@ -363,10 +363,18 @@ FUNCTION i886_fetch()
     # 如果只查到一笔，自动带出资料
     IF g_row_count >= 1 THEN
     
-        LET l_sql =
+    {
+    LET l_sql =
         "SELECT * FROM (",
         "SELECT ima01,ima02,ima08,ima06,ima05,ima25,",
         "ima44,ima31,ima63,ima55 ",
+        "FROM ima_file WHERE ",
+        g_wc," ORDER BY ima01",") WHERE ROWNUM = 1"
+    }
+
+    LET l_sql =
+        "SELECT * FROM (",
+        "SELECT * ",
         "FROM ima_file WHERE ",
         g_wc," ORDER BY ima01",") WHERE ROWNUM = 1"
 
@@ -442,6 +450,9 @@ FUNCTION i886_show()
     #显示单头数据
     DISPLAY BY NAME g_ima.ima01,g_ima.ima02,g_ima.ima08,g_ima.ima06,g_ima.ima05,g_ima.ima25
     DISPLAY BY NAME g_ima.ima44,g_ima.ima31,g_ima.ima63,g_ima.ima55
+
+    DISPLAY g_ima.ima01,g_ima.ima02,g_ima.ima08,g_ima.ima06,g_ima.ima05
+    DISPLAY g_ima.ima25,g_ima.ima44,g_ima.ima31,g_ima.ima63,g_ima.ima55
 
     #显示总笔数
     DISPLAY g_row_count TO FORMONLY.cnt
