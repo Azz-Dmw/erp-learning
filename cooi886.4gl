@@ -162,17 +162,37 @@ FUNCTION i103_menu()
       CALL i103_bp("G")
       CASE g_action_choice
 
-      #新增功能按钮
+        #新增功能按钮
         WHEN "insert"
            IF cl_chk_act_auth() THEN
               CALL i103_a()
            END IF
 
-      #查询功能按钮
+        #查询功能按钮
          WHEN "query"
             IF cl_chk_act_auth() THEN
                CALL i886_q()
             END IF
+
+        #第一笔
+         WHEN "first"
+            CALL i886_first()
+
+        #上笔按钮
+         WHEN "previous"
+            CALL i886_prev()
+
+        #指定笔
+        WHEN "jump"
+            CALL i886_jump()
+            
+        #下笔按钮
+         WHEN "next"
+            CALL i886_next()
+
+        #末一笔
+        WHEN "last"
+            CALL i886_last()
 
          #复制功能按钮
          WHEN "reproduce"
@@ -229,6 +249,31 @@ FUNCTION i103_bp(p_ud)
       ON ACTION query
          LET g_action_choice="query"
          EXIT DISPLAY
+
+      #第一笔
+      ON ACTION first
+        LET g_action_choice="first"
+        EXIT DISPLAY
+
+      #上笔
+      ON ACTION previous
+        LET g_action_choice="previous"
+        EXIT DISPLAY
+
+      #指定笔
+      ON ACTION jump
+        LET g_action_choice="jump"
+        EXIT DISPLAY
+
+      #下笔
+      ON ACTION next
+        LET g_action_choice="next"
+        EXIT DISPLAY
+
+      #末一笔
+      ON ACTION LAST
+        LET g_action_choice="last"
+        EXIT DISPLAY
 
       #复制       
       ON ACTION reproduce
@@ -336,63 +381,39 @@ END FUNCTION
 #-------------------------------------------------
 FUNCTION i886_fetch()
 
-    DEFINE l_cnt LIKE type_file.num5    #声明局部变量记录单头是否有数据
-    DEFINE l_rec RECORD LIKE ima_file.*
     DEFINE l_sql STRING
+    DEFINE l_rec RECORD LIKE ima_file.*
 
-    # 清空数组
-    LET g_total = 0
-    LET g_curr_index = 0
+    LET g_ima_list = NULL   #清空数组
+    LET g_total = 0         #总笔数
+    LET g_curr_index = 0    #当前笔数
 
-    #动态统计笔数
-    LET l_sql = "SELECT COUNT(*) FROM ima_file WHERE ", g_wc
+    LET l_sql =
+        "SELECT * FROM ima_file WHERE ",
+        g_wc," ORDER BY ima01"
 
-    PREPARE stmt_cnt FROM l_sql
-    EXECUTE stmt_cnt INTO l_cnt
+    PREPARE stmt_all FROM l_sql
+    DECLARE c_all CURSOR FOR stmt_all
 
-    DISPLAY  "总笔数:", l_cnt
+    #循环赋值到数组
+    FOREACH c_all INTO l_rec.*
+        LET g_total = g_total + 1
+        LET g_ima_list[g_total].g_ima.* = l_rec.*
+    END FOREACH
 
-    LET g_row_count = l_cnt
+    LET g_row_count = g_total
 
-    #单头没数据直接退出
-    IF g_row_count = 0 THEN
+    IF g_total = 0 THEN
         CALL cl_msg("查无资料！")
         RETURN
     END IF
 
-    # 如果只查到一笔，自动带出资料
-    IF g_row_count >= 1 THEN
-    
-    {
-    LET l_sql =
-        "SELECT * FROM (",
-        "SELECT ima01,ima02,ima08,ima06,ima05,ima25,",
-        "ima44,ima31,ima63,ima55 ",
-        "FROM ima_file WHERE ",
-        g_wc," ORDER BY ima01",") WHERE ROWNUM = 1"
-    }
+    # 默认显示第一笔
+    LET g_curr_index = 1
+    LET g_ima.* = g_ima_list[g_curr_index].g_ima.*
 
-    LET l_sql =
-        "SELECT * FROM (",
-        "SELECT * ",
-        "FROM ima_file WHERE ",
-        g_wc," ORDER BY ima01",") WHERE ROWNUM = 1"
-
-        DISPLAY "查询SQL：",l_sql
-
-        PREPARE stmt_one FROM l_sql
-        DECLARE c_one CURSOR FOR stmt_one
-
-        FOREACH c_one INTO g_ima.*
-            EXIT FOREACH
-        END FOREACH
-
-        DISPLAY "字段：",g_ima.*
-        
-    END IF
 
 END FUNCTION
-
 
 #-------------------------------------------------
 # 单身资料遍历填充
@@ -416,7 +437,7 @@ FUNCTION i886_b_fill()
 
     DISPLAY "料件编号：",g_ima.ima01
 
-    # 查询循环遍历单身资料
+    #查询循环遍历单身资料
     #声明游标
     DECLARE smd_cur CURSOR FOR
         SELECT smd04,smd02,smd06,smd03,smdacti,smdpos,smddate
@@ -451,13 +472,141 @@ FUNCTION i886_show()
     DISPLAY BY NAME g_ima.ima01,g_ima.ima02,g_ima.ima08,g_ima.ima06,g_ima.ima05,g_ima.ima25
     DISPLAY BY NAME g_ima.ima44,g_ima.ima31,g_ima.ima63,g_ima.ima55
 
-    DISPLAY g_ima.ima01,g_ima.ima02,g_ima.ima08,g_ima.ima06,g_ima.ima05
-    DISPLAY g_ima.ima25,g_ima.ima44,g_ima.ima31,g_ima.ima63,g_ima.ima55
+    #DISPLAY g_ima.ima01,g_ima.ima02,g_ima.ima08,g_ima.ima06,g_ima.ima05
+    #DISPLAY g_ima.ima25,g_ima.ima44,g_ima.ima31,g_ima.ima63,g_ima.ima55
 
     #显示总笔数
     DISPLAY g_row_count TO FORMONLY.cnt
-    DISPLAY g_row_count TO FORMONLY.cn2
+
+    #显示第几笔
+    DISPLAY g_curr_index TO FORMONLY.cn2
     
 END FUNCTION 
+
+#-------------------------------------------------
+# 第一笔函数
+#-------------------------------------------------
+FUNCTION i886_first()
+
+    IF g_total > 0 THEN
+        MESSAGE " "
+        LET g_curr_index = 1
+        CALL i886_refresh()
+    END IF
+
+END FUNCTION
+
+#-------------------------------------------------
+# 上笔函数
+#-------------------------------------------------
+FUNCTION i886_prev()
+
+    IF g_curr_index > 1 THEN
+        MESSAGE " "
+        LET g_curr_index = g_curr_index - 1
+        CALL i886_refresh()
+    ELSE
+        CALL cl_msg("已经是第一笔！")
+    END IF
+
+END FUNCTION
+
+#-------------------------------------------------
+# 跳转指定笔数函数
+#-------------------------------------------------
+FUNCTION i886_jump()
+
+    DEFINE g_jump_no LIKE type_file.num5
+
+    MESSAGE " "
+
+    LET g_jump_no = NULL
+
+    PROMPT "请输入要跳转的笔数：" FOR g_jump_no
+
+    IF g_jump_no IS NULL THEN
+        RETURN
+    END IF
+
+    IF g_jump_no < 1 OR g_jump_no > g_total THEN
+        CALL cl_msg("输入笔数不合法！")
+        RETURN
+    END IF
+
+    LET g_curr_index = g_jump_no
+    CALL i886_refresh()
+
+END FUNCTION
+
+#-------------------------------------------------
+# 下笔函数
+#-------------------------------------------------
+FUNCTION i886_next()
+
+    IF g_curr_index < g_total THEN
+        MESSAGE " "
+        LET g_curr_index = g_curr_index + 1
+        CALL i886_refresh()
+    ELSE
+        CALL cl_msg("已经是最后一笔！")
+    END IF
+
+END FUNCTION
+
+#-------------------------------------------------
+# 末一笔函数
+#-------------------------------------------------
+FUNCTION i886_last()
+
+    IF g_total > 0 THEN
+        MESSAGE " "
+        LET g_curr_index = g_total
+        CALL i886_refresh()
+    END IF
+
+END FUNCTION
+
+#-------------------------------------------------
+# 统一刷新函数
+#-------------------------------------------------
+FUNCTION i886_refresh()
+
+    LET g_ima.* = g_ima_list[g_curr_index].g_ima.*
+
+    CALL i886_b_fill()
+    CALL i886_show()
+
+END FUNCTION
+
+
+#-------------------------------------------------
+# 统一控制按钮函数(暂未实现)
+#-------------------------------------------------
+
+#| 状态   | first | prev | next | last |
+#| ---- | ----- | ---- | ---- | ---- |
+#| 第一笔  | 禁用    | 禁用   | 启用   | 启用   |
+#| 最后一笔 | 启用    | 启用   | 禁用   | 禁用   |
+FUNCTION i886_nav_control()
+
+    IF g_total <= 1 THEN
+
+        CALL cl_set_act_visible("first","N")
+        CALL cl_set_act_visible("previous","N")
+        CALL cl_set_act_visible("jump","N")
+        CALL cl_set_act_visible("next","N")
+        CALL cl_set_act_visible("last","N")
+
+    ELSE
+        CALL cl_set_act_visible("first","Y")
+        CALL cl_set_act_visible("previous","Y")
+        CALL cl_set_act_visible("next","Y")
+        CALL cl_set_act_visible("last","Y")
+        CALL cl_set_act_visible("jump","Y")
+
+    END IF
+
+END FUNCTION
+
 
 
