@@ -83,6 +83,7 @@ DEFINE
             pmk13   LIKE pmk_file.pmk13,
             gem02   LIKE gem_file.gem02,   #By Hao200505
             pml06   LIKE pml_file.pml06,   #By Hao200904 
+            pml12   LIKE pml_file.pml12,   #add项目编号 by dmw 20260402
             rvv31   LIKE rvv_file.rvv31,   #料件編號
            #pmn041   LIKE pmn_file.pmn041,   # P/O Item description  #TQC-D60014
             rvv031   LIKE rvv_file.rvv031,   # P/O Item description  #TQC-D60014
@@ -102,8 +103,8 @@ DEFINE
             rvv89   LIKE rvv_file.rvv89,  #FUN-DA0083
             rvb22   LIKE rvb_file.rvb22,   #INVOICE
             rvuconf1 LIKE rvu_file.rvuconf,   #確認
-            rvv25    LIKE rvv_file.rvv25,    #樣品
-            pml12   LIKE pml_file.pml12   #add项目编号 by dmw 20260402
+            rvv25    LIKE rvv_file.rvv25    #樣品
+
         END RECORD,
     g_argv1     LIKE rvv_file.rvv01,       # INPUT ARGUMENT - 1
     g_query_flag       LIKE type_file.num5,        #第一次進入程式時即進入Query之後進入next  #No.FUN-690028 SMALLINT
@@ -756,12 +757,12 @@ FUNCTION q112_b_fill()              #BODY FILL UP
  
    LET l_sql =
   #"SELECT rvv02,rvv04,rvv05,rvv36,rvv37,rvv31,",#FUN-D40016 mark
-   "SELECT rvv03,rvv01,rvv02,rvv09,rvv06,pmc03,rvv04,rvv05,rvv36,rvv37,pmm12,gen02,pmm13,gem02 gem02a,pmk13,'',pml06,rvv31,",#FUN-D40016 add
+   "SELECT rvv03,rvv01,rvv02,rvv09,rvv06,pmc03,rvv04,rvv05,rvv36,rvv37,pmm12,gen02,pmm13,gem02 gem02a,pmk13,'',pml06,pml12,rvv31,",#FUN-D40016 add
         #"  pmn041,pmm22,rvv38t,rvv17,rvv23,rvv17-rvv23,",   #FUN-560089
        #"  pmn041,pmm22,rvv38t,rvv87,rvv23+rvv88,rvv23,rvv88,rvv87-rvv23-rvv88,",   #FUN-560089  #No.TQC-7B0083 add rvv23_88/rvv88  #TQC-D60014
         #"  rvv031,'',pmm22,rvv38t,rvv87,rvv23+rvv88,rvv87-rvv23,rvv23,rvv88,rvv87-rvv23-rvv88,",   #TQC-D60014   #FUN-D90004 add rvv87-rvv23
         "  rvv031,'',CASE WHEN rvv36 IS NULL THEN rvu113 ELSE pmm22 END,rvv38,rvv38t,rvv87,rvv39t,rvv23+rvv88,rvv87-rvv23,rvv23,rvv88,rvv87-rvv23-rvv88,",   #MOD-DC0031
-        "  rvv89,rvb22,rvuconf,rvv25,pml12",  #FUN-DA0083 add rvv89
+        "  rvv89,rvb22,rvuconf,rvv25",  #FUN-DA0083 add rvv89
 #FUN-A50098--mod--str---跨庫寫法改用cl_get_target_table
 #       "  FROM ",g_dbs_tra CLIPPED,"rvu_file,",
 #       "       ",g_dbs_tra CLIPPED,"rvv_file,",
