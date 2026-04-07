@@ -890,7 +890,7 @@ FUNCTION i109_i(p_cmd)
                   DISPLAY BY NAME g_tc_jcr.tc_jcr05
                   NEXT FIELD tc_jcr05
 
-            #added by dmw 20260403 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段增加查询功能
+            #add by dmw 20260403 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段增加查询功能
                WHEN INFIELD(tc_jcr44)
                   CALL cl_init_qry_var()
                   LET g_qryparam.form = "q_occ"
@@ -1041,7 +1041,9 @@ FUNCTION i109_show()
     LET g_tc_jcr_t.* = g_tc_jcr.*
     # Modify by li250911 添加tc_jcr42字段
     # Modify by li251110 添加 tc_jcr43 字段
-    DISPLAY BY NAME  g_tc_jcr.tc_jcr01, g_tc_jcr.tc_jcr02, g_tc_jcr.tc_jcr03, g_tc_jcr.tc_jcr04, g_tc_jcr.tc_jcr05, g_tc_jcr.tc_jcr06,  
+    # Modify by dmw 20260407 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
+    DISPLAY BY NAME  g_tc_jcr.tc_jcr01, g_tc_jcr.tc_jcr02, g_tc_jcr.tc_jcr03, g_tc_jcr.tc_jcr04, g_tc_jcr.tc_jcr05, g_tc_jcr.tc_jcr06,
+                     g_tc_jcr.tc_jcr44, g_tc_jcr.tc_jcr45, g_tc_jcr.tc_jcr46, g_tc_jcr.tc_jcr47, # Modify by dmw 20260407
                      g_tc_jcr.tc_jcr07, g_tc_jcr.tc_jcr25, g_tc_jcr.tc_jcr24, g_tc_jcr.tc_jcr08, g_tc_jcr.tc_jcr09, g_tc_jcr.tc_jcr10, 
                      g_tc_jcr.tc_jcr11, g_tc_jcr.tc_jcr12,  
                      g_tc_jcr.tc_jcr13, g_tc_jcr.tc_jcr14, g_tc_jcr.tc_jcr15, g_tc_jcr.tc_jcr16, g_tc_jcr.tc_jcr17,
