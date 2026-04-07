@@ -177,7 +177,9 @@ FUNCTION i109_cs()
       INITIALIZE g_tc_jcr.* TO NULL    #No.FUN-750051 # Modify by li240512 添加 tc_jcr40 字段 # Modify by MO240925 添加 tc_jcr41 字段
       # Modify by li250911 添加tc_jcr42字段
       # Modify by li251110 添加 tc_jcr43 字段
-      CONSTRUCT BY NAME g_wc ON tc_jcr01,tc_jcr02,tc_jcr09,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr07,tc_jcr25,tc_jcr24,tc_jcr08,tc_jcr12,
+      # Modify by dmw 20260407 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
+      CONSTRUCT BY NAME g_wc ON tc_jcr01,tc_jcr02,tc_jcr09,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr47,
+                                tc_jcr07,tc_jcr25,tc_jcr24,tc_jcr08,tc_jcr12,
                                 tc_jcr10,tc_jcr11,tc_jcr13,tc_jcr14,tc_jcr15,tc_jcr16,tc_jcr17,tc_jcr18,tc_jcr19,tc_jcr20,
                                 tc_jcr21,tc_jcr22,tc_jcr23,tc_jcrconf,tc_jcruser,tc_jcrgrup,tc_jcroriu,tc_jcrorig,tc_jcracti,tc_jcrmodu,
                                 tc_jcrdate,tc_jcrcrat,tc_jcr26,tc_jcr27,tc_jcr28,tc_jcr29,tc_jcr30,tc_jcr31,tc_jcr32,tc_jcr33,tc_jcr34,
@@ -1645,7 +1647,8 @@ FUNCTION i109_list()
       # Modify by li250911 添加tc_jcr42字段
       # Modify by li250926 资料清单添加tc_jcr27,tc_jcr30,tc_jcr38,tc_jcr39
       # Modify by li251110 添加 tc_jcr43 字段
-      SELECT tc_jcrcrat,tc_jcr01,tc_jcr02,tc_jcr42,tc_jcr08,tc_jcr09,tc_jcr05,tc_jcr06,tc_jcr03,
+      # Modify by dmw 20260407 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
+      SELECT tc_jcrcrat,tc_jcr01,tc_jcr02,tc_jcr42,tc_jcr08,tc_jcr09,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr47,tc_jcr03,
             tc_jcr10,tc_jcr11,tc_jcr40,tc_jcr07,tc_jcr13,oba02,tc_jcr14,tc_jcr15,tc_jcr16,
             tc_jcr17,tc_jcr12,tc_jcr18,tc_jcr19,tc_jcr20,tc_jcruser,gen02,tc_jcrgrup,gem02,tc_jcr21,tc_jcr22,tc_jcr23
             ,tc_jcr27,tc_jcr25,tc_jcr24,tc_jcr30,tc_jcr38,tc_jcr39,tc_jcr43
@@ -2013,8 +2016,9 @@ FUNCTION i109_out()
    LET l_sql = "select REGEXP_SUBSTR('",l_url,"','^http://(\\d+\.)+\\d+', 1)||':8080/qrcode/qrcode' from dual"
    PREPARE url_pre1 FROM l_sql
    EXECUTE url_pre1 INTO l_url   
-                                                                                                                                    
-   LET l_sql="SELECT tc_jcr01,tc_jcr02,tc_jcr09,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr07,tc_jcr08,tc_jcr12,",
+
+# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段                                                                                                                                    
+   LET l_sql="SELECT tc_jcr01,tc_jcr02,tc_jcr09,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr47,tc_jcr07,tc_jcr08,tc_jcr12,",
              " tc_jcr10,tc_jcr11,tc_jcr13,tc_jcr14,tc_jcr15,tc_jcr16,tc_jcr17,tc_jcr18,tc_jcr19,tc_jcr20,",
              " tc_jcr21,tc_jcr22,tc_jcr23,tc_jcruser,tc_jcrgrup",
              " FROM tc_jcr_file ",  
@@ -2042,8 +2046,9 @@ FUNCTION i109_1_out()
    LET l_sql = "select REGEXP_SUBSTR('",l_url,"','^http://(\\d+\.)+\\d+', 1)||':8080/qrcode/qrcode' from dual"
    PREPARE url_pre FROM l_sql
    EXECUTE url_pre INTO l_url
-                                                                                                                 
-   LET l_sql=" SELECT tc_jcr01 ,tc_jcr02 ,tc_jcr09,tc_jcr03 ,tc_jcr04 ,tc_jcr05 ,tc_jcr06 ,tc_jcr07 ,tc_jcr08 ,tc_jcr12 ,tc_jcr10 ,",
+
+# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段                                                                                                                 
+   LET l_sql=" SELECT tc_jcr01 ,tc_jcr02 ,tc_jcr09,tc_jcr03 ,tc_jcr04 ,tc_jcr05 ,tc_jcr06 ,tc_jcr44 ,tc_jcr45 ,tc_jcr46 ,tc_jcr47 ,tc_jcr07 ,tc_jcr08 ,tc_jcr12 ,tc_jcr10 ,",
              " tc_jcr11 ,tc_jcr13 ,tc_jcr14 ,tc_jcr15 ,tc_jcr16 ,tc_jcr17 ,tc_jcr18, ",
              " tc_jcr19 ,tc_jcr20 ,tc_jcr21,tc_jcr22 ,tc_jcr23,gen02 as tc_jcruser ,tc_jcrgrup, ",
              " tc_jcr24 ,tc_jcr25 ,tc_jcr26 ,tc_jcr27,tc_jcr28 ,tc_jcr29,tc_jcr30,",
@@ -2103,9 +2108,10 @@ END FUNCTION
       RETURN 
    END IF 
 
+# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
    CALL cl_wait()                                                                                                                   
     LET l_sql="
-      SELECT tc_jcr01,tc_jcr02,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr07,tc_jcr11,tc_jcr22,tc_jcr23,tc_jcr24, tc_jcr26,tc_jcr27, tc_jcr29,tc_jcr30,
+      SELECT tc_jcr01,tc_jcr02,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr47,tc_jcr07,tc_jcr11,tc_jcr22,tc_jcr23,tc_jcr24, tc_jcr26,tc_jcr27, tc_jcr29,tc_jcr30,
       tc_jcr38,tc_jcr40, NVL(CONCAT(CONCAT(CONCAT(DECODE(tc_jcr31, 'Y', 'FAI/',''), DECODE(tc_jcr32, 'Y','AQO/', '') ),
       DECODE(tc_jcr33, 'Y', 'CPK/','') ) , DECODE(tc_jcr34, 'Y', 'PPAP/','')),'/')  as tc_jcr31, NVL(CONCAT(CONCAT( DECODE(tc_jcr35, 'Y', '外观/',''),
       DECODE(tc_jcr36, 'Y', '尺寸/','') ), DECODE(tc_jcr37, 'Y','性能/','') ),'/') as tc_jcr35,imz02
