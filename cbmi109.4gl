@@ -561,6 +561,7 @@ FUNCTION i109_i(p_cmd)
                   LET g_tc_jcr.tc_jcr24 = NULL
                   CALL cl_set_comp_entry("tc_jcr08",TRUE)
                   CALL cl_set_comp_required("tc_jcr08",TRUE)
+                  CALL cl_set_comp_required("tc_jcr13,tc_jcr14,tc_jcr16",TRUE)# Modify by dmw 20260408 单据类别为1时，tc_jcr13,tc_jcr14,tc_jcr16字段必填
                   CALL cl_set_comp_entry("tc_jcr24",FALSE)
                   CALL cl_set_comp_required("tc_jcr24",FALSE)
                   CALL cl_set_comp_required("tc_jcr26,tc_jcr27,tc_jcr28,tc_jcr29,tc_jcr30,tc_jcr31,tc_jcr32",FALSE)# Modify by mo 231218 单据类别为1时，取消必输
@@ -571,15 +572,18 @@ FUNCTION i109_i(p_cmd)
                      CALL cl_set_comp_entry("tc_jcr24",TRUE)
                      CALL cl_set_comp_required("tc_jcr24",TRUE)
                      CALL cl_set_comp_entry("tc_jcr08",FALSE)
-                     CALL cl_set_comp_required("tc_jcr08,",FALSE)
+                     CALL cl_set_comp_required("tc_jcr08",FALSE)
+                     CALL cl_set_comp_required("tc_jcr13,tc_jcr14,tc_jcr16",FALSE)# Modify by dmw 20260408 单据类别为3时，取消tc_jcr13,tc_jcr14,tc_jcr16字段必填
                      CALL cl_set_comp_required("tc_jcr26,tc_jcr27,tc_jcr28,tc_jcr29,tc_jcr30,tc_jcr31,tc_jcr32",TRUE)# Modify by mo 231218 单据类别为2，3时，为必输项
                      CALL cl_set_comp_required("tc_jcr33,tc_jcr34,tc_jcr35,tc_jcr36,tc_jcr37,tc_jcr38,tc_jcr39,tc_jcr43",TRUE)# Modify by mo 231218 单据类别为2，3时，为必输项
                ELSE 
                   IF g_tc_jcr.tc_jcr25 ='4' THEN   
                    CALL cl_set_comp_required("tc_jcr24,tc_jcr08,tc_jcr12,tc_jcr26,tc_jcr27,tc_jcr28,tc_jcr29,tc_jcr30,tc_jcr31,tc_jcr35,tc_jcr43,tc_jcr39,tc_jcr42",FALSE)
+                   CALL cl_set_comp_required("tc_jcr13,tc_jcr14,tc_jcr16",TRUE)# Modify by dmw 20260408 单据类别为4时，tc_jcr13,tc_jcr14,tc_jcr16字段必填
                   ELSE 
                      CALL cl_set_comp_entry("tc_jcr08,tc_jcr24",TRUE)
                      CALL cl_set_comp_required("tc_jcr08,tc_jcr24",TRUE)
+                     CALL cl_set_comp_required("tc_jcr13,tc_jcr14,tc_jcr16",TRUE)# Modify by dmw 20260408 单据类别为2时，tc_jcr13,tc_jcr14,tc_jcr16字段必填
                      CALL cl_set_comp_required("tc_jcr26,tc_jcr27,tc_jcr28,tc_jcr29,tc_jcr30,tc_jcr31,tc_jcr32",TRUE)# Modify by mo 231218 单据类别为2，3时，为必输项
                      CALL cl_set_comp_required("tc_jcr33,tc_jcr34,tc_jcr35,tc_jcr36,tc_jcr37,tc_jcr38,tc_jcr39,tc_jcr43",TRUE)# Modify by mo 231218 单据类别为2，3时，为必输项
                   END IF 
@@ -783,6 +787,7 @@ FUNCTION i109_i(p_cmd)
                LET g_tc_jcr.tc_jcr24 = NULL
                CALL cl_set_comp_entry("tc_jcr08",TRUE)
                CALL cl_set_comp_required("tc_jcr08",TRUE)
+               CALL cl_set_comp_required("tc_jcr13,tc_jcr14,tc_jcr16",TRUE)# Modify by dmw 20260408 单据类别为1时，tc_jcr13,tc_jcr14,tc_jcr16字段必填
                CALL cl_set_comp_entry("tc_jcr24",FALSE)
                CALL cl_set_comp_required("tc_jcr24",FALSE)
                CALL cl_set_comp_required("tc_jcr26,tc_jcr27,tc_jcr28,tc_jcr29,tc_jcr30,tc_jcr31,tc_jcr32",FALSE)# Modify by mo 231218 单据类别为1时，取消必输
@@ -795,6 +800,7 @@ FUNCTION i109_i(p_cmd)
                   CALL cl_set_comp_required("tc_jcr24",TRUE)
                   CALL cl_set_comp_entry("tc_jcr08",FALSE)
                   CALL cl_set_comp_required("tc_jcr08",FALSE)
+                  CALL cl_set_comp_required("tc_jcr13,tc_jcr14,tc_jcr16",FALSE)# Modify by dmw 20260408 单据类别为3时，取消tc_jcr13,tc_jcr14,tc_jcr16字段必填
                   CALL cl_set_comp_required("tc_jcr26,tc_jcr27,tc_jcr28,tc_jcr29,tc_jcr30,tc_jcr31,tc_jcr32",TRUE)# Modify by mo 231218 单据类别为2，3时，为必输项
                   CALL cl_set_comp_required("tc_jcr33,tc_jcr34,tc_jcr35,tc_jcr36,tc_jcr37,tc_jcr38,tc_jcr39",TRUE)# Modify by mo 231218 单据类别为2，3时，为必输项
                   
@@ -802,9 +808,11 @@ FUNCTION i109_i(p_cmd)
              ELSE 
                   IF g_tc_jcr.tc_jcr25 ='4' THEN   
                    CALL cl_set_comp_required("tc_jcr24,tc_jcr08,tc_jcr12,tc_jcr26,tc_jcr27,tc_jcr28,tc_jcr29,tc_jcr30,tc_jcr31,tc_jcr35,tc_jcr43,tc_jcr39,tc_jcr42",FALSE)
+                   CALL cl_set_comp_required("tc_jcr13,tc_jcr14,tc_jcr16",TRUE)# Modify by dmw 20260408 单据类别为4时，tc_jcr13,tc_jcr14,tc_jcr16字段必填
                ELSE 
                   CALL cl_set_comp_entry("tc_jcr08,tc_jcr24",TRUE)
                   CALL cl_set_comp_required("tc_jcr08,tc_jcr24",TRUE)
+                  CALL cl_set_comp_required("tc_jcr13,tc_jcr14,tc_jcr16",TRUE)# Modify by dmw 20260408 单据类别为2时，tc_jcr13,tc_jcr14,tc_jcr16字段必填
                   CALL cl_set_comp_required("tc_jcr26,tc_jcr27,tc_jcr28,tc_jcr29,tc_jcr30,tc_jcr31,tc_jcr32",TRUE)# Modify by mo 231218 单据类别为2，3时，为必输项
                   CALL cl_set_comp_required("tc_jcr33,tc_jcr34,tc_jcr35,tc_jcr36,tc_jcr37,tc_jcr38,tc_jcr39",TRUE)# Modify by mo 231218 单据类别为2，3时，为必输项
                END IF 
