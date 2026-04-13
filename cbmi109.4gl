@@ -15,7 +15,7 @@
 # Modify by li250911 添加tc_jcr42字段
 # Modify by li250926 资料清单添加tc_jcr27,tc_jcr30,tc_jcr38,tc_jcr39
 # Modify by li251110 添加 tc_jcr43 字段
-# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
+# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46 字段
 
 DATABASE ds
  
@@ -63,7 +63,7 @@ DEFINE   g_tc_jcr_l      DYNAMIC ARRAY OF RECORD
             tc_jcr44_l   LIKE tc_jcr_file.tc_jcr44,#账款客户 by dmw 20260403 添加 tc_jcr44 字段
             tc_jcr45_l   LIKE tc_jcr_file.tc_jcr45,#账款客户名称 by dmw 20260403 添加 tc_jcr45 字段
             tc_jcr46_l   LIKE tc_jcr_file.tc_jcr46,#品牌客户 by dmw 20260403 添加 tc_jcr46 字段
-            tc_jcr47_l   LIKE tc_jcr_file.tc_jcr47,#品牌客户名称 by dmw 20260403 添加 tc_jcr47 字段
+            #tc_jcr47_l   LIKE tc_jcr_file.tc_jcr47,#品牌客户名称 by dmw 20260403 添加 tc_jcr47 字段
             tc_jcr03_l   LIKE tc_jcr_file.tc_jcr03,
             tc_jcr10_l   LIKE tc_jcr_file.tc_jcr10,
             tc_jcr11_l   LIKE tc_jcr_file.tc_jcr11,
@@ -177,8 +177,8 @@ FUNCTION i109_cs()
       INITIALIZE g_tc_jcr.* TO NULL    #No.FUN-750051 # Modify by li240512 添加 tc_jcr40 字段 # Modify by MO240925 添加 tc_jcr41 字段
       # Modify by li250911 添加tc_jcr42字段
       # Modify by li251110 添加 tc_jcr43 字段
-      # Modify by dmw 20260407 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
-      CONSTRUCT BY NAME g_wc ON tc_jcr01,tc_jcr02,tc_jcr09,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr47,
+      # Modify by dmw 20260407 添加 tc_jcr44、tc_jcr45、tc_jcr46 字段
+      CONSTRUCT BY NAME g_wc ON tc_jcr01,tc_jcr02,tc_jcr09,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,
                                 tc_jcr07,tc_jcr25,tc_jcr24,tc_jcr08,tc_jcr12,
                                 tc_jcr10,tc_jcr11,tc_jcr13,tc_jcr14,tc_jcr15,tc_jcr16,tc_jcr17,tc_jcr18,tc_jcr19,tc_jcr20,
                                 tc_jcr21,tc_jcr22,tc_jcr23,tc_jcrconf,tc_jcruser,tc_jcrgrup,tc_jcroriu,tc_jcrorig,tc_jcracti,tc_jcrmodu,
@@ -217,7 +217,7 @@ FUNCTION i109_cs()
 
                WHEN INFIELD(tc_jcr46)
                  CALL cl_init_qry_var()
-                 LET g_qryparam.form = "q_occ"
+                 LET g_qryparam.form = "cq_obb"
                  LET g_qryparam.state = "c"
                  CALL cl_create_qry() RETURNING g_qryparam.multiret
                  DISPLAY g_qryparam.multiret TO tc_jcr46
@@ -535,9 +535,9 @@ FUNCTION i109_i(p_cmd)
     --END IF
     # Modify by li250911 添加tc_jcr42字段
     # Modify by li251110 添加 tc_jcr43 字段
-    # Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
+    # Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46字段
     INPUT BY NAME g_tc_jcr.tc_jcr01, g_tc_jcr.tc_jcr02, g_tc_jcr.tc_jcr03, g_tc_jcr.tc_jcr04, g_tc_jcr.tc_jcr05, g_tc_jcr.tc_jcr06,
-                  g_tc_jcr.tc_jcr44,g_tc_jcr.tc_jcr45,g_tc_jcr.tc_jcr46,g_tc_jcr.tc_jcr47, 
+                  g_tc_jcr.tc_jcr44,g_tc_jcr.tc_jcr45,g_tc_jcr.tc_jcr46, 
                   g_tc_jcr.tc_jcr07, g_tc_jcr.tc_jcr25, g_tc_jcr.tc_jcr24, g_tc_jcr.tc_jcr08, g_tc_jcr.tc_jcr09, g_tc_jcr.tc_jcr10, 
                   g_tc_jcr.tc_jcr11, g_tc_jcr.tc_jcr12,  
                   g_tc_jcr.tc_jcr13, g_tc_jcr.tc_jcr14, g_tc_jcr.tc_jcr15, g_tc_jcr.tc_jcr16, g_tc_jcr.tc_jcr17,
@@ -719,7 +719,7 @@ FUNCTION i109_i(p_cmd)
           CALL i109_set_no_entry(p_cmd)
           LET g_tc_jcr_o.tc_jcr05=g_tc_jcr.tc_jcr05
 
-         #add by dmw 20260403 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段维护逻辑与 tc_jcr05、tc_jcr06 字段相同
+         #add by dmw 20260403 tc_jcr44、tc_jcr45、tc_jcr46 字段维护逻辑与 tc_jcr05、tc_jcr06 字段相同
          AFTER FIELD tc_jcr44 
           IF NOT cl_null(g_tc_jcr.tc_jcr44) THEN 
             IF cl_null(g_tc_jcr_o.tc_jcr44) OR g_tc_jcr_o.tc_jcr44<>g_tc_jcr.tc_jcr44 THEN
@@ -742,7 +742,7 @@ FUNCTION i109_i(p_cmd)
           END IF 
           CALL i109_set_no_entry(p_cmd)
           LET g_tc_jcr_o.tc_jcr44=g_tc_jcr.tc_jcr44
-
+{
          AFTER FIELD tc_jcr46 
           IF NOT cl_null(g_tc_jcr.tc_jcr46) THEN 
             IF cl_null(g_tc_jcr_o.tc_jcr46) OR g_tc_jcr_o.tc_jcr46<>g_tc_jcr.tc_jcr46 THEN
@@ -755,17 +755,17 @@ FUNCTION i109_i(p_cmd)
                   NEXT FIELD tc_jcr46
                END IF
                IF g_tc_jcr.tc_jcr46 MATCHES 'MISC*' THEN
-                  LET g_tc_jcr.tc_jcr47 = NULL
+                  LET g_tc_jcr.tc_jcr46 = NULL
                ELSE
-                  LET g_tc_jcr.tc_jcr47 = l_occ02
+                  LET g_tc_jcr.tc_jcr46 = l_occ02
                END IF
-               DISPLAY BY NAME g_tc_jcr.tc_jcr47
+               DISPLAY BY NAME g_tc_jcr.tc_jcr46
                CALL cl_set_comp_required("tc_jcr41",IIF(g_tc_jcr.tc_jcr46='M2121',TRUE,FALSE))
             END IF 
           END IF 
           CALL i109_set_no_entry(p_cmd)
           LET g_tc_jcr_o.tc_jcr46=g_tc_jcr.tc_jcr46
-          
+}          
         AFTER FIELD tc_jcr07                     #分群碼
           IF cl_null(g_tc_jcr_o.tc_jcr07) OR g_tc_jcr_o.tc_jcr07 <> g_tc_jcr.tc_jcr07 THEN
             LET l_imz02 = NULL 
@@ -900,7 +900,7 @@ FUNCTION i109_i(p_cmd)
                   DISPLAY BY NAME g_tc_jcr.tc_jcr05
                   NEXT FIELD tc_jcr05
 
-            #add by dmw 20260403 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段增加查询功能
+            #add by dmw 20260403 tc_jcr44、tc_jcr45、tc_jcr46 字段增加查询功能
                WHEN INFIELD(tc_jcr44)
                   CALL cl_init_qry_var()
                   LET g_qryparam.form = "q_occ"
@@ -911,7 +911,7 @@ FUNCTION i109_i(p_cmd)
 
                WHEN INFIELD(tc_jcr46)
                   CALL cl_init_qry_var()
-                  LET g_qryparam.form = "q_occ"
+                  LET g_qryparam.form = "cq_obb"
                   LET g_qryparam.default1 = g_tc_jcr.tc_jcr46
                   CALL cl_create_qry() RETURNING g_tc_jcr.tc_jcr46
                   DISPLAY BY NAME g_tc_jcr.tc_jcr46
@@ -1051,9 +1051,9 @@ FUNCTION i109_show()
     LET g_tc_jcr_t.* = g_tc_jcr.*
     # Modify by li250911 添加tc_jcr42字段
     # Modify by li251110 添加 tc_jcr43 字段
-    # Modify by dmw 20260407 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
+    # Modify by dmw 20260407 添加 tc_jcr44、tc_jcr45、tc_jcr46 字段
     DISPLAY BY NAME  g_tc_jcr.tc_jcr01, g_tc_jcr.tc_jcr02, g_tc_jcr.tc_jcr03, g_tc_jcr.tc_jcr04, g_tc_jcr.tc_jcr05, g_tc_jcr.tc_jcr06,
-                     g_tc_jcr.tc_jcr44, g_tc_jcr.tc_jcr45, g_tc_jcr.tc_jcr46, g_tc_jcr.tc_jcr47, # Modify by dmw 20260407
+                     g_tc_jcr.tc_jcr44, g_tc_jcr.tc_jcr45, g_tc_jcr.tc_jcr46,  # Modify by dmw 20260407
                      g_tc_jcr.tc_jcr07, g_tc_jcr.tc_jcr25, g_tc_jcr.tc_jcr24, g_tc_jcr.tc_jcr08, g_tc_jcr.tc_jcr09, g_tc_jcr.tc_jcr10, 
                      g_tc_jcr.tc_jcr11, g_tc_jcr.tc_jcr12,  
                      g_tc_jcr.tc_jcr13, g_tc_jcr.tc_jcr14, g_tc_jcr.tc_jcr15, g_tc_jcr.tc_jcr16, g_tc_jcr.tc_jcr17,
@@ -1655,8 +1655,8 @@ FUNCTION i109_list()
       # Modify by li250911 添加tc_jcr42字段
       # Modify by li250926 资料清单添加tc_jcr27,tc_jcr30,tc_jcr38,tc_jcr39
       # Modify by li251110 添加 tc_jcr43 字段
-      # Modify by dmw 20260407 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
-      SELECT tc_jcrcrat,tc_jcr01,tc_jcr02,tc_jcr42,tc_jcr08,tc_jcr09,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr47,tc_jcr03,
+      # Modify by dmw 20260407 添加 tc_jcr44、tc_jcr45、tc_jcr46 字段
+      SELECT tc_jcrcrat,tc_jcr01,tc_jcr02,tc_jcr42,tc_jcr08,tc_jcr09,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr03,
             tc_jcr10,tc_jcr11,tc_jcr40,tc_jcr07,tc_jcr13,oba02,tc_jcr14,tc_jcr15,tc_jcr16,
             tc_jcr17,tc_jcr12,tc_jcr18,tc_jcr19,tc_jcr20,tc_jcruser,gen02,tc_jcrgrup,gem02,tc_jcr21,tc_jcr22,tc_jcr23
             ,tc_jcr27,tc_jcr25,tc_jcr24,tc_jcr30,tc_jcr38,tc_jcr39,tc_jcr43
@@ -2025,8 +2025,8 @@ FUNCTION i109_out()
    PREPARE url_pre1 FROM l_sql
    EXECUTE url_pre1 INTO l_url   
 
-# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段                                                                                                                                    
-   LET l_sql="SELECT tc_jcr01,tc_jcr02,tc_jcr09,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr47,tc_jcr07,tc_jcr08,tc_jcr12,",
+# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46 字段                                                                                                                                    
+   LET l_sql="SELECT tc_jcr01,tc_jcr02,tc_jcr09,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr07,tc_jcr08,tc_jcr12,",
              " tc_jcr10,tc_jcr11,tc_jcr13,tc_jcr14,tc_jcr15,tc_jcr16,tc_jcr17,tc_jcr18,tc_jcr19,tc_jcr20,",
              " tc_jcr21,tc_jcr22,tc_jcr23,tc_jcruser,tc_jcrgrup",
              " FROM tc_jcr_file ",  
@@ -2055,8 +2055,8 @@ FUNCTION i109_1_out()
    PREPARE url_pre FROM l_sql
    EXECUTE url_pre INTO l_url
 
-# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段                                                                                                                 
-   LET l_sql=" SELECT tc_jcr01 ,tc_jcr02 ,tc_jcr09,tc_jcr03 ,tc_jcr04 ,tc_jcr05 ,tc_jcr06 ,tc_jcr44 ,tc_jcr45 ,tc_jcr46 ,tc_jcr47 ,tc_jcr07 ,tc_jcr08 ,tc_jcr12 ,tc_jcr10 ,",
+# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46 字段                                                                                                                 
+   LET l_sql=" SELECT tc_jcr01 ,tc_jcr02 ,tc_jcr09,tc_jcr03 ,tc_jcr04 ,tc_jcr05 ,tc_jcr06 ,tc_jcr44 ,tc_jcr45 ,tc_jcr46 ,tc_jcr07 ,tc_jcr08 ,tc_jcr12 ,tc_jcr10 ,",
              " tc_jcr11 ,tc_jcr13 ,tc_jcr14 ,tc_jcr15 ,tc_jcr16 ,tc_jcr17 ,tc_jcr18, ",
              " tc_jcr19 ,tc_jcr20 ,tc_jcr21,tc_jcr22 ,tc_jcr23,gen02 as tc_jcruser ,tc_jcrgrup, ",
              " tc_jcr24 ,tc_jcr25 ,tc_jcr26 ,tc_jcr27,tc_jcr28 ,tc_jcr29,tc_jcr30,",
@@ -2116,10 +2116,10 @@ END FUNCTION
       RETURN 
    END IF 
 
-# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46、tc_jcr47 字段
+# Modify by dmw 20260403 添加 tc_jcr44、tc_jcr45、tc_jcr46 字段
    CALL cl_wait()                                                                                                                   
     LET l_sql="
-      SELECT tc_jcr01,tc_jcr02,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr47,tc_jcr07,tc_jcr11,tc_jcr22,tc_jcr23,tc_jcr24, tc_jcr26,tc_jcr27, tc_jcr29,tc_jcr30,
+      SELECT tc_jcr01,tc_jcr02,tc_jcr03,tc_jcr04,tc_jcr05,tc_jcr06,tc_jcr44,tc_jcr45,tc_jcr46,tc_jcr07,tc_jcr11,tc_jcr22,tc_jcr23,tc_jcr24, tc_jcr26,tc_jcr27, tc_jcr29,tc_jcr30,
       tc_jcr38,tc_jcr40, NVL(CONCAT(CONCAT(CONCAT(DECODE(tc_jcr31, 'Y', 'FAI/',''), DECODE(tc_jcr32, 'Y','AQO/', '') ),
       DECODE(tc_jcr33, 'Y', 'CPK/','') ) , DECODE(tc_jcr34, 'Y', 'PPAP/','')),'/')  as tc_jcr31, NVL(CONCAT(CONCAT( DECODE(tc_jcr35, 'Y', '外观/',''),
       DECODE(tc_jcr36, 'Y', '尺寸/','') ), DECODE(tc_jcr37, 'Y','性能/','') ),'/') as tc_jcr35,imz02
