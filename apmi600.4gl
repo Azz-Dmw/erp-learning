@@ -187,7 +187,7 @@
 # Modify.........: By Paul230518 HS沒新增權限的隱藏資料清單
 # Modify.........: By Paul241112 增加pmc23折讓到期日控制
 # Modify.........: By MO240205 资料清单增加厂商分类名字
-# Modify.........: By dmw20260421 新增可录入采购人员字段
+# Modify.........: By dmw20260421 新增可录入采购人员和采购人员姓名字段
 DATABASE ds
 
 GLOBALS "../../../tiptop/config/top.global"
@@ -466,7 +466,7 @@ FUNCTION i600_cs()
       pmc1917,pmc1918,pmc1919,     #FUN-720041
       pmc1912,
       pmc1913,
-      pmc1914,pmc1915,pmc1916,
+      pmc1914,pmc1915,pmc1916,ta_pmc1922,
       pmc914,pmc915,pmc916,pmc917,pmc918,
       pmc919,pmc920,pmc921,pmc922,pmc923,
       pmcud01,pmcud02,pmcud03,pmcud04,pmcud05,
@@ -680,6 +680,17 @@ FUNCTION i600_cs()
                CALL cl_dynamic_qry() RETURNING g_qryparam.multiret
                DISPLAY g_qryparam.multiret TO pmcud06
                NEXT FIELD pmcud06
+
+            {WHEN INFIELD(pmc1916) 
+               CALL cl_init_qry_var()
+               LET g_qryparam.form = "q_gen"
+               LET g_qryparam.state = 'c'
+               CALL cl_create_qry() RETURNING g_qryparam.multiret
+               DISPLAY g_qryparam.multiret TO pmc1916
+               NEXT FIELD pmc1916
+            }
+
+
             OTHERWISE EXIT CASE
          END CASE
       ON IDLE g_idle_seconds
@@ -1266,7 +1277,7 @@ FUNCTION i600_i(p_cmd)
       g_pmc.pmcud01,g_pmc.pmcud02,g_pmc.pmcud03,g_pmc.pmcud04,g_pmc.pmcud05,
       g_pmc.pmcud06,g_pmc.pmcud07,g_pmc.pmcud08,g_pmc.pmcud09,g_pmc.pmcud10,
       g_pmc.pmcud11,g_pmc.pmcud12,g_pmc.pmcud13,g_pmc.pmcud14,g_pmc.pmcud15,
-      g_pmc.pmcuser,g_pmc.pmcgrup,g_pmc.pmcmodu,g_pmc.pmcdate,g_pmc.pmcacti,g_pmc.pmccrat,g_pmc.pmc1916  #FUN-870100  add by dmw20260422 pmc1916 采购人员
+      g_pmc.pmcuser,g_pmc.pmcgrup,g_pmc.pmcmodu,g_pmc.pmcdate,g_pmc.pmcacti,g_pmc.pmccrat,g_pmc.pmc1916,g_pmc.ta_pmc1922  #FUN-870100  add by dmw20260422 pmc1916 采购人员
       WITHOUT DEFAULTS
 
       BEFORE INPUT
@@ -2038,6 +2049,33 @@ FUNCTION i600_i(p_cmd)
             END IF
             DISPLAY BY NAME g_pmc.pmc923
          END IF
+{
+      #add by dmw20260428 增加采购人字段
+      AFTER FIELD pmc1916
+          IF NOT cl_null(g_pmc.pmc1916) THEN
+             CALL i600_pmc1916('a')
+             IF NOT cl_null(g_errno) THEN
+                LET g_pmc.pmc1916 = g_pmc_t.pmc1916
+                CALL cl_err(g_pmc.pmc1916,g_errno,0)
+                DISPLAY BY NAME g_pmc.pmc1916 
+                NEXT FIELD pmc1916
+             END IF
+          ELSE
+             DISPLAY '' TO FORMONLY.ta_pmc1922
+          END IF
+}
+      # Modify.........: By dmw 根据采购人员带出采购人员姓名
+      AFTER FIELD pmc1916
+         IF NOT cl_null(g_pmc.pmc1916) THEN 
+           CALL i600_pmc1916()
+           IF NOT cl_null(g_errno) THEN 
+             CALL cl_err('',g_errno,0)
+             NEXT FIELD pmc1916
+           END IF 
+         ELSE 
+           CLEAR ta_pmc1922
+           INITIALIZE g_pmc.ta_pmc1922 TO NULL 
+         END IF 
 
       AFTER FIELD pmcud01
          IF NOT cl_validate() THEN NEXT FIELD CURRENT END IF
@@ -2362,6 +2400,20 @@ FUNCTION i600_i(p_cmd)
                CALL cl_dynamic_qry() RETURNING g_pmc.pmcud06
                DISPLAY BY NAME g_pmc.pmcud06
                NEXT FIELD pmcud06
+
+{             WHEN INFIELD(pmc1916) #add by dmw20260428 增加开窗采购负责人
+               CALL cl_init_qry_var()
+               LET g_qryparam.form = "q_gen"
+               LET g_qryparam.state = 'c'
+               CALL cl_create_qry() RETURNING g_qryparam.multiret
+               DISPLAY g_qryparam.multiret TO pmc1916
+               NEXT FIELD pmc1916
+}
+            #add by dmw20260428 增加开窗采购负责人
+            WHEN INFIELD(pmc1916)
+              CALL cq_hr(FALSE,TRUE,'') RETURNING g_pmc.pmc1916
+              NEXT FIELD pmc1916
+
             OTHERWISE EXIT CASE
          END CASE
       ON ACTION local_data #建立地區檔
@@ -3157,7 +3209,7 @@ FUNCTION i600_show()
       g_pmc.pmc1917,g_pmc.pmc1918,g_pmc.pmc1919,  #FUN-720041
       g_pmc.pmc1912,
       g_pmc.pmc1913,
-      g_pmc.pmc1914,g_pmc.pmc1915,g_pmc.pmc1916,
+      g_pmc.pmc1914,g_pmc.pmc1915,g_pmc.pmc1916,g_pmc.ta_pmc1922,
       g_pmc.pmc914,g_pmc.pmc915,g_pmc.pmc916,g_pmc.pmc917,g_pmc.pmc918,
       g_pmc.pmc919,g_pmc.pmc920,g_pmc.pmc921,g_pmc.pmc922,g_pmc.pmc923,
       g_pmc.pmcud01,g_pmc.pmcud02,g_pmc.pmcud03,g_pmc.pmcud04,g_pmc.pmcud05,
@@ -4244,7 +4296,7 @@ FUNCTION i600_out()
       pmc52, pmc53, pmc15, pmc16,
       pmc56, pmc55, pmc57, pmc10 , pmc11, pmc12,     #No.FUN-970022 ADD pmc57
       pmc1917,pmc1918,pmc1919,pmc1912,pmc1913,
-      pmc1914,pmc1915,pmc1916,
+      pmc1914,pmc1915,pmc1916,ta_pmc1922,
       pmc914,pmc915,pmc916,pmc917,pmc918,
       pmc919,pmc920,pmc921,pmc922,pmc923,
       pmcud01,pmcud02,pmcud03,pmcud04,pmcud05,
@@ -7705,4 +7757,47 @@ FUNCTION i600_sign()
 	END IF
 
 	CLOSE i600_cl
+END FUNCTION 
+
+{
+#add by dmw20260428 开窗回写逻辑
+FUNCTION i600_pmc1916(p_cmd)
+DEFINE p_cmd      LIKE type_file.chr1,    #No.FUN-680136 VARCHAR(1)
+       l_gen01    LIKE gen_file.gen01,
+       l_gen02    LIKE gen_file.gen02,             #No:7381
+       l_genacti  LIKE gen_file.genacti
+ 
+    LET g_errno = ' '
+    SELECT gen01,gen02,genacti INTO l_gen01,l_gen02,l_genacti    #No:7381
+      FROM gen_file
+     WHERE gen01 = g_pmc.pmc1916
+    CASE
+       WHEN SQLCA.SQLCODE = 100 LET g_errno = 'mfg1312'
+                                LET l_gen02 = NULL
+                                LET l_genacti = NULL
+       WHEN l_genacti = 'N'  LET g_errno = '9028'
+       OTHERWISE             LET g_errno = SQLCA.SQLCODE USING '-------'
+    END CASE
+    IF cl_null(g_errno) OR p_cmd = 'd' THEN 
+      DISPLAY l_gen01 TO pmc1916
+      DISPLAY l_gen02 TO ta_pmc1922
+    END IF
+
+END FUNCTION
+}
+# Modify.........: By dmw20260428 根据采购人员带出采购人员姓名
+#函数实现
+FUNCTION i600_pmc1916()
+
+    INITIALIZE g_errno,g_pmc.ta_pmc1922 TO NULL 
+
+    SELECT hr02 INTO g_pmc.ta_pmc1922 FROM hr_view
+     WHERE hr01 = g_pmc.pmc1916
+
+    CASE WHEN SQLCA.SQLCODE = 100  LET g_errno = 'aap-038'
+         OTHERWISE                 LET g_errno = SQLCA.SQLCODE USING '-------'
+    END CASE
+
+    DISPLAY BY NAME g_pmc.ta_pmc1922
+    
 END FUNCTION 
