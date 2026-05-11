@@ -34,8 +34,6 @@ DEFINE   g_tc_jgd     DYNAMIC ARRAY OF RECORD
                         tc_jgd16     LIKE tc_jgd_file.tc_jgd16,#JF应收HKD  
                         tc_jgd19     LIKE tc_jgd_file.tc_jgd19,#出货方式
                         tc_jgd20     LIKE tc_jgd_file.tc_jgd20,#分配方式
-                        #tc_jgd23     LIKE tc_jgd_file.tc_jgd23,#客户代码      add by dmw20260507
-                        #tc_jgd24     LIKE tc_jgd_file.tc_jgd24, #汇率         add by dmw20260507
                         tc_jgd25     LIKE tc_jgd_file.tc_jgd25,#应付JWS(转换后)  add by dmw20260507
                         tc_jgd26     LIKE tc_jgd_file.tc_jgd26 #JF应收(转换后)   add by dmw20260507
                       END RECORD  
@@ -88,7 +86,7 @@ END MAIN
 #QBE 查詢資料 
 FUNCTION t033_cs()
 
-# add...... By dmw20260429 增加客户代码(tc_jgd23)和汇率(tc_jgd24)字段
+# add...... By dmw20260429 增加客户代码(tc_jgd23)、汇率(tc_jgd24)字段、应付JWS(转换后)(tc_jgd25)和JF应收(转换后)(tc_jgd26)字段
   CONSTRUCT g_wc ON  tc_jgd21,tc_jgd22,tc_jgd01,tc_jgd02,tc_jgd03,tc_jgd04,tc_jgd05,tc_jgd18,tc_jgd06,tc_jgd17,tc_jgd07,tc_jgd08,tc_jgd09,tc_jgd10,
                     tc_jgd11,tc_jgd12,tc_jgd13,tc_jgd14,tc_jgd15,tc_jgd16,tc_jgd19,tc_jgd20,tc_jgd04,tc_jgd25,tc_jgd26
          FROM tc_jgd21,tc_jgd22,g_tc_jgd[1].tc_jgd01,g_tc_jgd[1].tc_jgd02,g_tc_jgd[1].tc_jgd03,g_tc_jgd[1].tc_jgd04,g_tc_jgd[1].tc_jgd05,g_tc_jgd[1].tc_jgd18,
@@ -163,30 +161,6 @@ FUNCTION t033_cs()
             EXIT CONSTRUCT
       END CONSTRUCT
 
-      # ===== 汇率单独输入（不参与WHERE）=====
-      IF INT_FLAG THEN
-         RETURN
-      END IF
-
-      #INITIALIZE tc_jgd24 TO NULL
-
-      INPUT BY NAME tc_jgd24 WITHOUT DEFAULTS
-         ON ACTION ACCEPT
-            EXIT INPUT
-         ON ACTION CANCEL
-            LET INT_FLAG = TRUE
-            EXIT INPUT
-      END INPUT
-
-      DISPLAY "汇率为1：", tc_jgd24
-
-      IF NOT cl_null(tc_jgd24) AND tc_jgd24 <> 0 THEN
-         LET l_rate = tc_jgd24
-      ELSE
-         LET l_rate = 0
-      END IF
-
-      DISPLAY "汇率为2：", l_rate
 
       IF INT_FLAG THEN 
          RETURN 
@@ -204,9 +178,10 @@ FUNCTION t033_cs()
          LET g_wc = g_wc, " AND tc_jgd24 = ", tc_jgd24
       END IF
       }
-      # add...... By dmw20260429 增加客户代码(tc_jgd23)和汇率(tc_jgd24)字段
+      # add...... By dmw20260511 增加汇率(tc_jgd24)字段、应付JWS(转换后)(tc_jgd25)和JF应收(转换后)(tc_jgd26)字段
       LET g_sql =  "SELECT  tc_jgd01,tc_jgd02,tc_jgd03,tc_jgd04,occ02,tc_jgd05,tc_jgd18,tc_jgd06,tc_jgd17,tc_jgd07,tc_jgd08,tc_jgd09,tc_jgd10,tc_jgd11,
-                   tc_jgd12,tc_jgd13,tc_jgd14,tc_jgd15,tc_jgd16,tc_jgd19,tc_jgd20,tc_jgd23,tc_jgd24,tc_jgd25,tc_jgd26 FROM tc_jgd_file LEFT JOIN occ_file on occ01=tc_jgd04
+                   tc_jgd12,tc_jgd13,tc_jgd14,tc_jgd15,tc_jgd16,tc_jgd19,tc_jgd20,tc_jgd25,tc_jgd26
+                   FROM tc_jgd_file LEFT JOIN occ_file on occ01=tc_jgd04
                    WHERE  ", g_wc ," ORDER BY 1"
 
       DISPLAY g_sql
@@ -280,20 +255,6 @@ FUNCTION t033_b_fill()
             CALL cl_err('FOREACH:',SQLCA.sqlcode,1) 
             EXIT FOREACH 
          END IF 
-
-         # =========================
-         # add...... By dmw20260507 汇率转换逻辑
-         # =========================
-      IF NOT cl_null(l_rate) AND l_rate <> 0 THEN
-         LET g_tc_jgd[g_cnt].tc_jgd25 =
-            cl_digcut(g_tc_jgd[g_cnt].tc_jgd14 * l_rate, 4)
-
-         LET g_tc_jgd[g_cnt].tc_jgd26 =
-            cl_digcut(g_tc_jgd[g_cnt].tc_jgd15 * l_rate, 4)
-      ELSE
-         LET g_tc_jgd[g_cnt].tc_jgd25 = 0
-         LET g_tc_jgd[g_cnt].tc_jgd26 = 0
-      END IF
 
          LET g_cnt = g_cnt + 1
          IF g_cnt > g_max_rec THEN
@@ -390,8 +351,7 @@ FUNCTION t033_i()
 
       DEFINE currs  LIKE azj_file.azj04
       DEFINE l_i    LIKE type_file.num5
-      #DEFINE l_tc_jgd23     LIKE tc_jgd_file.tc_jgd23 #客户代码
-      #DEFINE l_tc_jgd24     LIKE tc_jgd_file.tc_jgd24 #汇率
+
       LET g_cnt = 1 
       
       # add...... By dmw20260429 增加客户代码(tc_jgd23)和汇率(tc_jgd24)字段
@@ -442,9 +402,13 @@ FUNCTION t033_i()
     #        NEXT FIELD l_plant
     #     END IF
     #     DISPLAY BY NAME l_Plant
+
+      LET l_rate = tc_jgd24 # add...... By dmw20260511 将输入的汇率值保存到l_rate变量中，后续使用
+      DISPLAY "输入的汇率值为：",l_rate
       END INPUT
 
       BEGIN WORK
+
 
          FOR l_i=1  TO 6
             CASE 
@@ -469,7 +433,15 @@ FUNCTION t033_i()
                   LET l_plant='JF'
             END CASE
 
+         DISPLAY "循环次数：",l_i
+
          LET g_sql ="DELETE FROM tc_jgd_file WHERE  tc_jgd21=",tc_jgd21," AND  tc_jgd22=",tc_jgd22," AND tc_jgd04='",l_occ01,"'"
+
+         # add...... By dmw202605011 拼接删除SQL的客户代码(tc_jgd23)条件
+         IF NOT cl_null(tc_jgd23) THEN
+            LET g_sql = g_sql," AND tc_jgd23='",tc_jgd23,"'"
+         END IF
+
          DISPLAY "执行的删除SQL为:",g_sql
          PREPARE t033_des FROM g_sql
          EXECUTE t033_des
@@ -482,6 +454,11 @@ FUNCTION t033_i()
                        where tc_jcvconf='K' AND tc_jcv07=",tc_jgd21," AND  tc_jcv08=",tc_jgd22," 
                        AND tc_jcv05='",l_occ01,"' AND tc_jcw08!='MISC' AND ((oebud02!='6' and oebud02!='7') or oebud02 is null) AND tc_jcw17 !=0
                        AND  EXISTS (SELECT 1 FROM tc_jgc_file WHERE tc_jgc01=tc_jcv05 and tc_jgc02=tc_jcw08)" 
+
+         # add...... By dmw202605011 拼接查询SQL的客户代码(tc_jgd23)条件
+         IF NOT cl_null(tc_jgd23) THEN
+            LET g_sql = g_sql," AND TC_JCW22='",tc_jgd23,"'"
+         END IF
 
          DISPLAY "执行的查询SQL为:",g_sql 
 
@@ -525,7 +502,9 @@ FUNCTION t033_i()
             # LET g_tc_jgd[g_cnt].tc_jgd16=g_tc_jgd[g_cnt].tc_jgd15/l_curr*l_curr1
             LET g_tc_jgd[g_cnt].tc_jgd16=cl_digcut(g_tc_jgd[g_cnt].tc_jgd15*currs,4)
 
-            # add...... By dmw20260429 增加客户代码(tc_jgd23)和汇率(tc_jgd24)字段
+            DISPLAY "应付JWS(转换后)和JF应收(转换后)的值为：",g_tc_jgd[g_cnt].tc_jgd25,g_tc_jgd[g_cnt].tc_jgd26
+
+            # add...... By dmw20260429 增加客户代码(tc_jgd23)、汇率(tc_jgd24)字段、应付JWS(转换后)(tc_jgd25)和JF应收(转换后)(tc_jgd26)字段
             INSERT INTO tc_jgd_file VALUES(g_tc_jgd[g_cnt].tc_jgd01,g_tc_jgd[g_cnt].tc_jgd02,g_tc_jgd[g_cnt].tc_jgd03,g_tc_jgd[g_cnt].tc_jgd04,g_tc_jgd[g_cnt].tc_jgd05,g_tc_jgd[g_cnt].tc_jgd06,
                g_tc_jgd[g_cnt].tc_jgd07,g_tc_jgd[g_cnt].tc_jgd08,g_tc_jgd[g_cnt].tc_jgd09,g_tc_jgd[g_cnt].tc_jgd10,g_tc_jgd[g_cnt].tc_jgd11,
                g_tc_jgd[g_cnt].tc_jgd12,g_tc_jgd[g_cnt].tc_jgd13,g_tc_jgd[g_cnt].tc_jgd14,g_tc_jgd[g_cnt].tc_jgd15,g_tc_jgd[g_cnt].tc_jgd16,
