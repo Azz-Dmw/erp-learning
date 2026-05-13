@@ -640,20 +640,18 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
             END IF
             END IF 
 
-            # ===== 新增逻辑：同产品编号带出最近转换汇率 =====
+            # ====== add by dmw20260506 ===== 新增逻辑：同产品编号带出最近转换汇率 =====
                SELECT tc_jgc11
                INTO l_tc_jgc11
                FROM tc_jgc_file
                WHERE tc_jgc02 = g_tc_jgc[l_ac].tc_jgc02
                AND tc_jgc01 = g_tc_jgc01
-               #AND tc_jgc07 = g_tc_jgc[l_ac].tc_jgc07
                AND tc_jgcacti = 'Y'
                AND tc_jgc06 = (
                      SELECT MAX(tc_jgc06)
                      FROM tc_jgc_file
                      WHERE tc_jgc02 = g_tc_jgc[l_ac].tc_jgc02
                         AND tc_jgc01 = g_tc_jgc01
-                        #AND tc_jgc07 = g_tc_jgc[l_ac].tc_jgc07
                         AND tc_jgcacti = 'Y'
                   )
 
