@@ -7,6 +7,7 @@
 # MODIFY...... By MO241212 过滤cxmi032料号不存在的数据
 # MODIFY...... By dmw20260429 增加客户代码(tc_jgd23)和汇率(tc_jgd24)字段
 # MODIFY...... By dmw20260507 增加应付JWS(转换后)(tc_jgd25)和JF应收(转换后)(tc_jgd26)字段
+# MODIFY...... By dmw20260515 增加客户代码(tc_jgd23)开窗查询以及输入后的处理逻辑
 
 DATABASE ds
 
@@ -51,6 +52,8 @@ DEFINE l_time LIKE type_file.chr8        #計算被使用時間    # VARCHAR(8)
 DEFINE tc_jgd23     LIKE tc_jgd_file.tc_jgd23#客户代码
 DEFINE tc_jgd24     LIKE tc_jgd_file.tc_jgd24 #汇率
 DEFINE l_rate LIKE tc_jgd_file.tc_jgd24 # add...... By dmw20260507 用于保存汇率(tc_jgd24)字段
+DEFINE g_occ02  LIKE occ_file.occ02 # add...... By dmw20260515 用于保存客户编号对应的客户简称
+
 
 
 MAIN
@@ -94,9 +97,10 @@ FUNCTION t033_cs()
               g_tc_jgd[1].tc_jgd11,g_tc_jgd[1].tc_jgd12,g_tc_jgd[1].tc_jgd13,g_tc_jgd[1].tc_jgd14,g_tc_jgd[1].tc_jgd15,g_tc_jgd[1].tc_jgd16,
               g_tc_jgd[1].tc_jgd19,g_tc_jgd[1].tc_jgd20,tc_jgd23,g_tc_jgd[1].tc_jgd25,g_tc_jgd[1].tc_jgd26
                               # 螢幕上取單頭條件
-
+                    
          BEFORE CONSTRUCT 
             CALL cl_qbe_init() 
+
 
          ON ACTION CONTROLP 
             CASE
@@ -131,7 +135,40 @@ FUNCTION t033_cs()
                   CALL cl_create_qry() RETURNING g_qryparam.multiret
                   DISPLAY g_qryparam.multiret TO g_tc_jgd[1].tc_jgd04
                   NEXT FIELD tc_jgd04
+
+            #add by dmw20260515 增加客户代码(tc_jgd23)的开窗查询
+               WHEN INFIELD(tc_jgd23)
+                  CALL cl_init_qry_var()
+                  LET g_qryparam.state = 'c'
+                  LET g_qryparam.form = "cq_occ"
+                  CALL cl_create_qry() RETURNING g_qryparam.multiret
+
+                  LET tc_jgd23 = g_qryparam.multiret
+                  DISPLAY BY NAME tc_jgd23
+
+                  NEXT FIELD tc_jgd23
+
             END CASE
+
+########  add by dmw20260515 增加客户代码(tc_jgd23)输入后的处理逻辑 start  #########
+         AFTER FIELD tc_jgd23
+         IF cl_null(tc_jgd23) THEN
+            LET g_occ02 = ""
+            DISPLAY g_occ02 TO occ02
+            RETURN
+         END IF
+
+         SELECT occ02 INTO g_occ02 FROM occ_file WHERE occ01 = tc_jgd23
+
+         IF SQLCA.SQLCODE != 0 THEN
+            CALL cl_err("tc_jgd23","客户不存在",0)
+            LET g_occ02 = ""
+            DISPLAY g_occ02 TO occ02
+            NEXT FIELD tc_jgd23
+         END IF
+
+         DISPLAY g_occ02 TO occ02
+###########################            end        #############################
 
             ON ACTION qbe_select                           #查詢提供條件選擇，選擇後直接帶入畫面 
                CALL cl_qbe_select() 
@@ -165,6 +202,7 @@ FUNCTION t033_cs()
       IF INT_FLAG THEN 
          RETURN 
       END IF 
+
 
       LET g_wc = g_wc CLIPPED #,cl_get_extra_cond('tc_jgduser', 'tc_jgdgrup') 
 
@@ -357,6 +395,41 @@ FUNCTION t033_i()
       # add...... By dmw20260429 增加客户代码(tc_jgd23)和汇率(tc_jgd24)字段
       INITIALIZE l_plant,l_occ01,tc_jgd21,tc_jgd22,l_occ02,tc_jgd23,tc_jgd24 TO NULL
       INPUT BY NAME tc_jgd21,tc_jgd22,tc_jgd23,tc_jgd24  WITHOUT DEFAULTS #l_plant,l_occ01,
+
+########add by dmw20260515 增加客户代码(tc_jgd23)输入后的处理逻辑 start#########
+      ON ACTION CONTROLP
+         CASE
+            WHEN INFIELD(tc_jgd23)
+               CALL cl_init_qry_var()
+               LET g_qryparam.state = 'c'
+               LET g_qryparam.form = "cq_occ"
+               CALL cl_create_qry() RETURNING g_qryparam.multiret
+
+               LET tc_jgd23 = g_qryparam.multiret
+               DISPLAY BY NAME tc_jgd23
+
+               NEXT FIELD tc_jgd23
+         END CASE
+
+      AFTER FIELD tc_jgd23
+         IF cl_null(tc_jgd23) THEN
+            LET g_occ02 = ""
+            DISPLAY g_occ02 TO occ02
+            RETURN
+         END IF
+
+         SELECT occ02 INTO g_occ02 FROM occ_file WHERE occ01 = tc_jgd23
+
+         IF SQLCA.SQLCODE != 0 THEN
+            CALL cl_err("tc_jgd23","客户不存在",0)
+            LET g_occ02 = ""
+            DISPLAY g_occ02 TO occ02
+            NEXT FIELD tc_jgd23
+         END IF
+
+         DISPLAY g_occ02 TO occ02
+###########################            end            #############################
+
       ON IDLE g_idle_seconds
          CALL cl_on_idle()
          CONTINUE INPUT
@@ -405,7 +478,10 @@ FUNCTION t033_i()
 
       LET l_rate = tc_jgd24 # add...... By dmw20260511 将输入的汇率值保存到l_rate变量中，后续使用
       DISPLAY "输入的汇率值为：",l_rate
+
       END INPUT
+
+
 
       BEGIN WORK
 
