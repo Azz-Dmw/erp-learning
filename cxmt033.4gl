@@ -53,7 +53,8 @@ DEFINE tc_jgd23     LIKE tc_jgd_file.tc_jgd23#客户代码
 DEFINE tc_jgd24     LIKE tc_jgd_file.tc_jgd24 #汇率
 DEFINE l_rate LIKE tc_jgd_file.tc_jgd24 # add...... By dmw20260507 用于保存汇率(tc_jgd24)字段
 DEFINE g_occ02  LIKE occ_file.occ02 # add...... By dmw20260515 用于保存客户编号对应的客户简称
-
+DEFINE l_jgc12                   LIKE tc_jgc_file.tc_jgc12   # 公司
+DEFINE l_jgc01                   LIKE tc_jgc_file.tc_jgc01   # 客户编号
 
 
 MAIN
@@ -486,30 +487,50 @@ FUNCTION t033_i()
       BEGIN WORK
 
 
-         FOR l_i=1  TO 6
-            CASE 
-               WHEN l_i=1 
-                  LET l_occ01='M2196'
-                  LET l_plant='JF'
-               WHEN l_i=2
-                  LET l_occ01='M2193'
-                  LET l_plant='YC'
-               WHEN l_i=3 
-                  LET l_occ01='NM3166'
-                  LET l_plant='JF'
+         -- FOR l_i=1  TO 6
+         --    CASE 
+         --       WHEN l_i=1 
+         --          LET l_occ01='M2196'
+         --          LET l_plant='JF'
+         --       WHEN l_i=2
+         --          LET l_occ01='M2193'
+         --          LET l_plant='YC'
+         --       WHEN l_i=3 
+         --          LET l_occ01='NM3166'
+         --          LET l_plant='JF'
 
-               WHEN l_i=4
-                  LET l_occ01='NM2121'
-                  LET l_plant='JF'
-               WHEN l_i=5
-                  LET l_occ01='NM2122'
-                  LET l_plant='JF'
-               WHEN l_i=6
-                  LET l_occ01='NM2125'
-                  LET l_plant='JF'
-            END CASE
+         --       WHEN l_i=4
+         --          LET l_occ01='NM2121'
+         --          LET l_plant='JF'
+         --       WHEN l_i=5
+         --          LET l_occ01='NM2122'
+         --          LET l_plant='JF'
+         --       WHEN l_i=6
+         --          LET l_occ01='NM2125'
+         --          LET l_plant='JF'
+         --    END CASE
 
-         DISPLAY "循环次数：",l_i
+         --DISPLAY "循环次数：",l_i
+
+
+################### add by dmw 20260515 优化循环逻辑改为动态读取  start ######################### 
+   DECLARE c_jgc CURSOR FOR
+   SELECT DISTINCT tc_jgc01, tc_jgc12
+     FROM tc_jgc_file         #从程式cxmi032的客户代码tc_jgc01字段和公司tc_jgc12字段读取
+    WHERE tc_jgc12 IS NOT NULL
+      AND (tc_jgc01 = tc_jgd23 OR tc_jgd23 IS NULL)   #限制只查当前输入客户
+
+      OPEN c_jgc
+
+      FOREACH c_jgc INTO l_jgc01, l_jgc12
+
+         LET l_occ01 = l_jgc01
+         LET l_plant = l_jgc12
+         LET l_plant = upshift(l_plant)   #公司tc_jgc12字段转换成大写后赋值给l_plant变量
+
+      DISPLAY "客户=", l_occ01, " 公司=", l_plant
+################### add by dmw 20260515 优化循环逻辑改为动态读取  end ######################### 
+
 
          LET g_sql ="DELETE FROM tc_jgd_file WHERE  tc_jgd21=",tc_jgd21," AND  tc_jgd22=",tc_jgd22," AND tc_jgd04='",l_occ01,"'"
 
@@ -594,8 +615,14 @@ FUNCTION t033_i()
             END IF 
 
             LET g_cnt = g_cnt + 1
-         END FOREACH
-         END FOR
+
+         -- END FOREACH
+         -- END FOR
+
+         END FOREACH   -- t033_bcs1
+         END FOREACH   -- c_jgc
+         CLOSE c_jgc    #add by dmw20260515 关闭客户公司游标
+
       COMMIT WORK
       CLOSE t033_bcs1
       CALL g_tc_jgd.deleteElement(g_cnt)     #移除指定位置记录，并将指定位置后之数据往上移，动态数组（Dynamic Array）的笔数减1 
