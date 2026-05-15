@@ -6,13 +6,16 @@
 
 # Modify.........: By li241118 新增分配模式和交易价栏位
 # Modify.........: By dmw20260427 新增报价汇率和转换汇率栏位
+# Modify.........: By dmw20260513 新增tc_jgc12公司字段和栏位
 
 DATABASE ds
  
 GLOBALS "../../../tiptop/config/top.global"
  
 DEFINE g_tc_jgc01         LIKE tc_jgc_file.tc_jgc01, #客户代码
-       g_tc_jgc01_t       LIKE tc_jgc_file.tc_jgc01,
+       g_tc_jgc01_t       LIKE tc_jgc_file.tc_jgc01, #客户代码旧值
+       g_tc_jgc12         LIKE tc_jgc_file.tc_jgc12,  #公司
+       g_tc_jgc12_t       LIKE tc_jgc_file.tc_jgc12,  #公司旧值
           
        g_tc_jgc           DYNAMIC ARRAY OF RECORD    #程式變數(Program Variables)
                tc_jgc02       LIKE tc_jgc_file.tc_jgc02,  #产品编号
@@ -79,6 +82,7 @@ DEFINE g_no_ask        LIKE type_file.num5    #No.FUN-680136 SMALLINT
 DEFINE   w    ui.Window
 DEFINE   f    ui.Form
 DEFINE   page om.DomNode
+DEFINE g_wc_l STRING   #add by dmw20260514 用于新增时查询条件拼接
 
 MAIN
     OPTIONS                                #改變一些系統預設值
@@ -116,12 +120,13 @@ FUNCTION i032_curs()
     CLEAR FORM                             #清除畫面
     CALL g_tc_jgc.clear()
     LET g_wc=" 1=1"
-    INITIALIZE g_tc_jgc01 TO NULL    #No.FUN-750051
+    INITIALIZE g_tc_jgc01, g_tc_jgc12 TO NULL    #No.FUN-750051
    # Modify.........: By li241118 新增分配模式和交易价栏位
    # Modify.........: By dmw20260427 新增报价汇率和转换汇率栏位
-      CONSTRUCT g_wc ON tc_jgc01,tc_jgc02,tc_jgc03,tc_jgc07,tc_jgc04,tc_jgc05,tc_jgc06,tc_jgc08,tc_jgc09,tc_jgc10,tc_jgc11 #报价汇率、转换汇率栏位
+   # Modify.........: By dmw20260513 新增公司字段tc_jgc12
+      CONSTRUCT g_wc ON tc_jgc01,tc_jgc12,tc_jgc02,tc_jgc03,tc_jgc07,tc_jgc04,tc_jgc05,tc_jgc06,tc_jgc08,tc_jgc09,tc_jgc10,tc_jgc11 #报价汇率、转换汇率栏位
                         ,tc_jgcuser,tc_jgcgrup,tc_jgcmodu,tc_jgcdate,tc_jgcacti
-                   FROM tc_jgc01,s_tc_jgc[1].tc_jgc02,s_tc_jgc[1].tc_jgc03,s_tc_jgc[1].tc_jgc07,s_tc_jgc[1].tc_jgc04,s_tc_jgc[1].tc_jgc05
+                   FROM tc_jgc01,tc_jgc12,s_tc_jgc[1].tc_jgc02,s_tc_jgc[1].tc_jgc03,s_tc_jgc[1].tc_jgc07,s_tc_jgc[1].tc_jgc04,s_tc_jgc[1].tc_jgc05
                    ,s_tc_jgc[1].tc_jgc06,s_tc_jgc[1].tc_jgc08,s_tc_jgc[1].tc_jgc09,s_tc_jgc[1].tc_jgc10,s_tc_jgc[1].tc_jgc11
                    ,s_tc_jgc[1].tc_jgcuser,s_tc_jgc[1].tc_jgcgrup,s_tc_jgc[1].tc_jgcmodu, s_tc_jgc[1].tc_jgcdate
                    ,s_tc_jgc[1].tc_jgcacti
@@ -175,7 +180,7 @@ FUNCTION i032_curs()
          RETURN
       END IF
  
-   LET g_sql= "SELECT DISTINCT tc_jgc01 FROM tc_jgc_file ",
+   LET g_sql= "SELECT DISTINCT tc_jgc01,tc_jgc12 FROM tc_jgc_file ",
               " WHERE  ", g_wc CLIPPED,
               " ORDER BY tc_jgc01"
    PREPARE i032_prepare FROM g_sql      #預備一下
@@ -261,12 +266,14 @@ FUNCTION i032_a()
    CALL g_tc_jgc.clear()
    INITIALIZE g_tc_jgc01 LIKE tc_jgc_file.tc_jgc01
    LET g_tc_jgc01_t = NULL
+   LET g_tc_jgc12_t = NULL
    CALL cl_opmsg('a')
  
    WHILE TRUE
       CALL i032_i("a")                #輸入單頭
       IF INT_FLAG THEN                   #使用者不玩了
          LET g_tc_jgc01=NULL
+         LET g_tc_jgc12 = NULL            #add by dmw20260513
          CLEAR FORM
          LET INT_FLAG = 0
          CALL cl_err('',9001,0)
@@ -277,9 +284,12 @@ FUNCTION i032_a()
       CALL i032_b()                      #輸入單身
  
       LET g_tc_jgc01_t = g_tc_jgc01            #保留舊值
+      LET g_tc_jgc12_t = g_tc_jgc12            #保留公司旧值 add by dmw20260513
       EXIT WHILE
       
    END WHILE
+
+   DISPLAY "i032_a()中的g_wc值为：",g_wc
  
 END FUNCTION
  
@@ -288,8 +298,8 @@ FUNCTION i032_i(p_cmd)
  
    CALL cl_set_head_visible("","YES")           #No.FUN-6B0032
 
-   INPUT g_tc_jgc01 WITHOUT DEFAULTS FROM tc_jgc01
- 
+   INPUT g_tc_jgc01,g_tc_jgc12 WITHOUT DEFAULTS FROM tc_jgc01,tc_jgc12    #add by dmw20260513 增加公司tc_jgc12字段输入
+
       AFTER FIELD tc_jgc01
          IF NOT cl_null(g_tc_jgc01) THEN
             SELECT COUNT(*) INTO g_cnt FROM occ_file WHERE occacti='Y' AND occ01 = g_tc_jgc01
@@ -331,6 +341,19 @@ FUNCTION i032_i(p_cmd)
          CALL cl_cmdask()     #MOD-4C0121
  
    END INPUT
+
+   ########add by dmw20260514  start ########
+   LET g_wc_l = " 1=1 "
+   IF NOT cl_null(g_tc_jgc01) THEN
+      LET g_wc_l = g_wc_l CLIPPED, " AND tc_jgc01 = '", g_tc_jgc01 CLIPPED, "'"
+   END IF
+   IF NOT cl_null(g_tc_jgc12) THEN
+      LET g_wc_l = g_wc_l CLIPPED, " AND tc_jgc12 = '", g_tc_jgc12 CLIPPED, "'"
+   END IF
+
+   DISPLAY "i032_i()中的g_wc_l值为：",g_wc_l
+   ########                end      #########
+
  
 END FUNCTION
 
@@ -339,7 +362,8 @@ FUNCTION i032_q()
     LET g_row_count = 0
     LET g_curs_index = 0
     CALL cl_navigator_setting( g_curs_index, g_row_count )
-    INITIALIZE g_tc_jgc01 TO NULL            #No.FUN-6A0162
+    #INITIALIZE g_tc_jgc01 TO NULL            #No.FUN-6A0162
+    INITIALIZE g_tc_jgc01,g_tc_jgc12 TO NULL    # Modify.........: By dmw20260513 增加公司字段初始化
  
    MESSAGE ""
    CALL cl_opmsg('q')
@@ -371,10 +395,10 @@ DEFINE
  
    MESSAGE ""
    CASE p_flag
-       WHEN 'N' FETCH NEXT     i032_cs INTO g_tc_jgc01
-       WHEN 'P' FETCH PREVIOUS i032_cs INTO g_tc_jgc01
-       WHEN 'F' FETCH FIRST    i032_cs INTO g_tc_jgc01
-       WHEN 'L' FETCH LAST     i032_cs INTO g_tc_jgc01
+       WHEN 'N' FETCH NEXT     i032_cs INTO g_tc_jgc01,g_tc_jgc12 #modify by dmw20260513 增加公司字段
+       WHEN 'P' FETCH PREVIOUS i032_cs INTO g_tc_jgc01,g_tc_jgc12 #modify by dmw20260513 增加公司字段
+       WHEN 'F' FETCH FIRST    i032_cs INTO g_tc_jgc01,g_tc_jgc12 #modify by dmw20260513 增加公司字段
+       WHEN 'L' FETCH LAST     i032_cs INTO g_tc_jgc01,g_tc_jgc12 #modify by dmw20260513 增加公司字段
        WHEN '/'
             IF (NOT g_no_ask) THEN
                 CALL cl_getmsg('fetch',g_lang) RETURNING g_msg
@@ -423,6 +447,7 @@ END FUNCTION
 FUNCTION i032_show()
  
    DISPLAY g_tc_jgc01 TO tc_jgc01               #單頭
+   DISPLAY g_tc_jgc12 TO tc_jgc12               #公司 add by dmw20260513
    let g_occ02=''
    SELECT occ02 INTO g_occ02 FROM occ_file WHERE occ01 = g_tc_jgc01
    DISPLAY g_occ02 TO occ02
@@ -606,9 +631,9 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
             END IF           
             # Modify.........: By li241118 新增分配模式和交易价栏位
             # Modify.........: By dmw20260427 新增报价汇率和转换汇率栏位
-            INSERT INTO tc_jgc_file(tc_jgc01,tc_jgc02,tc_jgc03,tc_jgc04,tc_jgc05,tc_jgc07
+            INSERT INTO tc_jgc_file(tc_jgc01,tc_jgc12,tc_jgc02,tc_jgc03,tc_jgc04,tc_jgc05,tc_jgc07
              ,tc_jgc06,tc_jgcuser,tc_jgcgrup,tc_jgcdate,tc_jgcacti,tc_jgc08,tc_jgc09,tc_jgc10,tc_jgc11) 
-            VALUES(g_tc_jgc01,g_tc_jgc[l_ac].tc_jgc02,g_tc_jgc[l_ac].tc_jgc03,g_tc_jgc[l_ac].tc_jgc04,g_tc_jgc[l_ac].tc_jgc05,g_tc_jgc[l_ac].tc_jgc07
+            VALUES(g_tc_jgc01,g_tc_jgc12,g_tc_jgc[l_ac].tc_jgc02,g_tc_jgc[l_ac].tc_jgc03,g_tc_jgc[l_ac].tc_jgc04,g_tc_jgc[l_ac].tc_jgc05,g_tc_jgc[l_ac].tc_jgc07
                      ,g_tc_jgc[l_ac].tc_jgc06,g_tc_jgc[l_ac].tc_jgcuser,g_tc_jgc[l_ac].tc_jgcgrup,g_tc_jgc[l_ac].tc_jgcdate,g_tc_jgc[l_ac].tc_jgcacti
                      ,g_tc_jgc[l_ac].tc_jgc08,g_tc_jgc[l_ac].tc_jgc09,g_tc_jgc[l_ac].tc_jgc10,g_tc_jgc[l_ac].tc_jgc11)
             IF SQLCA.sqlcode THEN
@@ -619,6 +644,7 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
                LET g_rec_b=g_rec_b+1
                DISPLAY g_rec_b TO FORMONLY.cnt2
                COMMIT WORK
+
             END IF
 
          AFTER FIELD tc_jgc02
@@ -698,6 +724,17 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
                   NEXT FIELD tc_jgc03
             END IF         
 }
+
+         #add by dmw20260514
+         AFTER FIELD tc_jgc11
+            CALL calc_cost(l_ac)  
+            LET l_A = g_tc_jgc[l_ac].tc_jgc03
+            LET l_B = g_tc_jgc[l_ac].tc_jgc09
+            IF NOT cl_null(l_A) AND l_A != 0 AND NOT cl_null(l_B) THEN
+               LET l_C = l_B / (l_A / 1.1)
+               CALL calc_ratio(l_C, l_ac)
+            END IF  
+
          #add by dmw20260427 
          AFTER FIELD tc_jgc03
             IF NOT cl_null(g_tc_jgc[l_ac].tc_jgc03) AND g_tc_jgc[l_ac].tc_jgc03 <= 0 THEN
@@ -760,8 +797,9 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
                LET g_tc_jgc[l_ac].tc_jgc04=NULL 
                LET g_tc_jgc[l_ac].tc_jgc05=NULL 
             END IF
-            DISPLAY BY NAME g_tc_jgc[l_ac].tc_jgc04, g_tc_jgc[l_ac].tc_jgc05         
+            DISPLAY BY NAME g_tc_jgc[l_ac].tc_jgc04, g_tc_jgc[l_ac].tc_jgc05       
             
+
         ON ROW CHANGE
            IF INT_FLAG THEN
               CALL cl_err('',9001,0)
@@ -795,7 +833,7 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
                                     tc_jgc11=g_tc_jgc[l_ac].tc_jgc11,
                                     tc_jgcmodu=g_tc_jgc[l_ac].tc_jgcmodu,
                                     tc_jgcdate=g_tc_jgc[l_ac].tc_jgcdate
-                  WHERE tc_jgc01=g_tc_jgc01 AND tc_jgc02=g_tc_jgc_t.tc_jgc02 AND tc_jgc06=g_tc_jgc_t.tc_jgc06 AND tc_jgc09=g_tc_jgc_t.tc_jgc09
+                  WHERE tc_jgc01=g_tc_jgc01 AND tc_jgc02=g_tc_jgc_t.tc_jgc02 AND tc_jgc06=g_tc_jgc_t.tc_jgc06 AND tc_jgc09=g_tc_jgc_t.tc_jgc09 AND tc_jgc12=g_tc_jgc12  #add by dmw20260513 增加公司字段更新条件
                IF SQLCA.sqlcode THEN
                   CALL cl_err3("upd","tc_jgc_file","","",SQLCA.sqlcode,"","",1)  #No.FUN-660129
                   LET g_tc_jgc[l_ac].* = g_tc_jgc_t.*
@@ -866,6 +904,7 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
             NEXT FIELD tc_jgc04
          END IF 
 
+
       ON ACTION controlp
          CASE              
             WHEN INFIELD(tc_jgc02)
@@ -913,10 +952,24 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
          CALL cl_set_head_visible("","AUTO")       #No.FUN-6B0032
 
     END INPUT
+
+   DISPLAY "i032_b()中的g_wc值为：",g_wc
+   DISPLAY "i032_b()中的g_wc_l值为：",g_wc_l
  
     CLOSE i032_bcl
     COMMIT WORK
-   CALL i032_b_fill(g_wc)
+    #CALL i032_b_fill(g_wc)
+
+#################    #add by dmw20260514  start    ##############
+   IF NOT cl_null(g_wc_l) AND g_wc_l <> "" THEN
+      DISPLAY "新增i032_b()中g_wc_l的值为：",g_wc_l
+      LET g_wc = g_wc_l
+      CALL i032_b_fill(g_wc)
+   ELSE
+      DISPLAY "查询i032_b()中的g_wc值为：",g_wc
+      CALL i032_b_fill(g_wc)
+   END IF
+#################    #add by dmw20260514  end    ##############
 
 END FUNCTION
 
@@ -924,6 +977,13 @@ END FUNCTION
  
 FUNCTION i032_b_fill(p_wc)              #BODY FILL UP
 DEFINE p_wc   STRING   #MOD-8B0084
+
+#add by dmw20260514
+   IF NOT cl_null(p_wc) AND p_wc <> "" THEN
+      LET p_wc = " AND ", p_wc CLIPPED
+   END IF
+
+   DISPLAY "i032_b_fill(p_wc) 中的p_wc值为：",p_wc
  
     # Modify.........: By dmw20260427 新增报价汇率和转换汇率栏位
    LET g_sql = "SELECT tc_jgc02,ima02,tc_jgc07,tc_jgc03,tc_jgc08,tc_jgc04,tc_jgc05,tc_jgc09,tc_jgc10,tc_jgc11,tc_jgc06
@@ -932,6 +992,9 @@ DEFINE p_wc   STRING   #MOD-8B0084
                LEFT JOIN IMA_FILE on ima01=tc_jgc02
                WHERE tc_jgc01 = '",g_tc_jgc01,"' AND ",p_wc CLIPPED,
                " ORDER BY tc_jgc02,tc_jgc06 "
+
+   DISPLAY "执行的查询SQL为：",g_sql
+
    PREPARE i032_prepare2 FROM g_sql      #預備一下
    DECLARE tc_jgc_curs CURSOR FOR i032_prepare2
  
@@ -1238,5 +1301,55 @@ DEFINE p_idx LIKE type_file.num5
    END IF
 
    DISPLAY BY NAME g_tc_jgc[p_idx].tc_jgc04, g_tc_jgc[p_idx].tc_jgc05
+
+END FUNCTION
+
+#add by dmw20260514 核心逻辑：USD 类的  成本价的计算：新的成本价 = 上一次的成本价*报价汇率/转换汇率
+FUNCTION calc_cost(p_idx)
+
+DEFINE p_idx LIKE type_file.num5
+DEFINE l_last_cost DECIMAL(16,6)
+DEFINE l_rate_in   DECIMAL(16,6)
+DEFINE l_rate_out  DECIMAL(16,6)
+
+   IF cl_null(g_tc_jgc[p_idx].tc_jgc02)
+   OR cl_null(g_tc_jgc[p_idx].tc_jgc07)
+   OR cl_null(g_tc_jgc[p_idx].tc_jgc10)
+   OR cl_null(g_tc_jgc[p_idx].tc_jgc11)
+   THEN
+      RETURN
+   END IF
+
+   IF g_tc_jgc[p_idx].tc_jgc07 <> "USD" THEN
+      RETURN
+   END IF
+
+   LET l_rate_in  = g_tc_jgc[p_idx].tc_jgc10
+   LET l_rate_out = g_tc_jgc[p_idx].tc_jgc11
+
+   IF l_rate_out IS NULL OR l_rate_out = 0 THEN
+      LET l_rate_out = 1
+   END IF
+
+   SELECT tc_jgc03
+   INTO l_last_cost
+   FROM (
+         SELECT tc_jgc03
+            FROM tc_jgc_file
+            WHERE tc_jgc01 = g_tc_jgc01
+            AND tc_jgc02 = g_tc_jgc[p_idx].tc_jgc02
+            AND tc_jgc07 = 'USD'
+            ORDER BY tc_jgc06 DESC
+         )
+   WHERE ROWNUM = 1
+
+   IF SQLCA.sqlcode = 0 AND l_last_cost IS NOT NULL THEN
+
+      LET g_tc_jgc[p_idx].tc_jgc03 =
+          l_last_cost * l_rate_in / l_rate_out
+
+      DISPLAY BY NAME g_tc_jgc[p_idx].tc_jgc03
+
+   END IF
 
 END FUNCTION
