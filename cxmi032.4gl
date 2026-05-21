@@ -702,10 +702,10 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
                NEXT FIELD tc_jgc09
             END IF
             #add by dmw20260427
-            LET l_A = g_tc_jgc[l_ac].tc_jgc03
-            LET l_B = g_tc_jgc[l_ac].tc_jgc09
+            LET l_A = g_tc_jgc[l_ac].tc_jgc03   #成本价
+            LET l_B = g_tc_jgc[l_ac].tc_jgc09   #交易价
             IF NOT cl_null(l_A) AND l_A != 0 AND NOT cl_null(l_B) THEN
-               LET l_C = l_B / (l_A / 1.1)
+               LET l_C = l_B / (l_A / 1.1) * 100   #交易价/(成本价/1.1)*100
                CALL calc_ratio(l_C, l_ac)
             END IF
 
@@ -731,7 +731,7 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
             LET l_A = g_tc_jgc[l_ac].tc_jgc03
             LET l_B = g_tc_jgc[l_ac].tc_jgc09
             IF NOT cl_null(l_A) AND l_A != 0 AND NOT cl_null(l_B) THEN
-               LET l_C = l_B / (l_A / 1.1)
+               LET l_C = l_B / (l_A / 1.1) * 100   #交易价/(成本价/1.1)*100
                CALL calc_ratio(l_C, l_ac)
             END IF  
 
@@ -744,7 +744,7 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
             LET l_A = g_tc_jgc[l_ac].tc_jgc03
             LET l_B = g_tc_jgc[l_ac].tc_jgc09
             IF NOT cl_null(l_A) AND l_A != 0 AND NOT cl_null(l_B) THEN
-               LET l_C = l_B / (l_A / 1.1)
+               LET l_C = l_B / (l_A / 1.1) * 100  #交易价/(成本价/1.1)*100
                CALL calc_ratio(l_C, l_ac)
             END IF  
             
