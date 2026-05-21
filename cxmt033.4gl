@@ -55,6 +55,7 @@ DEFINE l_rate LIKE tc_jgd_file.tc_jgd24 # add...... By dmw20260507 用于保存�
 DEFINE g_occ02  LIKE occ_file.occ02 # add...... By dmw20260515 用于保存客户编号对应的客户简称
 DEFINE l_jgc12                   LIKE tc_jgc_file.tc_jgc12   # 公司
 DEFINE l_jgc01                   LIKE tc_jgc_file.tc_jgc01   # 客户编号
+DEFINE g_tc_jgd23_sql LIKE type_file.chr1000
 
 
 MAIN
@@ -89,6 +90,9 @@ END MAIN
 
 #QBE 查詢資料 
 FUNCTION t033_cs()
+
+DEFINE l_occ03 LIKE occ_file.occ02
+DEFINE l_pos LIKE type_file.num10
 
 # add...... By dmw20260429 增加客户代码(tc_jgd23)、汇率(tc_jgd24)字段、应付JWS(转换后)(tc_jgd25)和JF应收(转换后)(tc_jgd26)字段
   CONSTRUCT g_wc ON  tc_jgd21,tc_jgd22,tc_jgd01,tc_jgd02,tc_jgd03,tc_jgd04,tc_jgd05,tc_jgd18,tc_jgd06,tc_jgd17,tc_jgd07,tc_jgd08,tc_jgd09,tc_jgd10,
@@ -145,6 +149,10 @@ FUNCTION t033_cs()
                   CALL cl_create_qry() RETURNING g_qryparam.multiret
 
                   LET tc_jgd23 = g_qryparam.multiret
+                  # 多选结果转换
+                  #CALL cl_replace(tc_jgd23,"|","','") RETURNING tc_jgd23
+                  #LET tc_jgd23 = "'",tc_jgd23 CLIPPED,"'"
+                  DISPLAY "客户代码=",tc_jgd23
                   DISPLAY BY NAME tc_jgd23
 
                   NEXT FIELD tc_jgd23
@@ -152,7 +160,7 @@ FUNCTION t033_cs()
             END CASE
 
 ########  add by dmw20260515 增加客户代码(tc_jgd23)输入后的处理逻辑 start  #########
-         AFTER FIELD tc_jgd23
+         {AFTER FIELD tc_jgd23
          IF cl_null(tc_jgd23) THEN
             LET g_occ02 = ""
             DISPLAY g_occ02 TO occ02
@@ -162,13 +170,46 @@ FUNCTION t033_cs()
          SELECT occ02 INTO g_occ02 FROM occ_file WHERE occ01 = tc_jgd23
 
          IF SQLCA.SQLCODE != 0 THEN
-            CALL cl_err("tc_jgd23","客户不存在",0)
+            CALL cl_err("tc_jgd23",'cxmt033',0)
             LET g_occ02 = ""
             DISPLAY g_occ02 TO occ02
             NEXT FIELD tc_jgd23
          END IF
 
-         DISPLAY g_occ02 TO occ02
+         DISPLAY g_occ02 TO occ02}
+
+         {AFTER FIELD tc_jgd23
+
+            IF cl_null(tc_jgd23) THEN
+               LET g_occ02 = ""
+               DISPLAY g_occ02 TO occ02
+               RETURN
+            END IF
+
+            LET g_occ02 = ""
+
+            LET g_sql = "
+               SELECT occ02
+               FROM occ_file
+               WHERE occ01 IN (",tc_jgd23,")
+            "
+
+            DISPLAY "客户简称查询SQL=",g_sql
+
+            PREPARE p_occ FROM g_sql
+            DECLARE c_occ CURSOR FOR p_occ
+
+            FOREACH c_occ INTO l_occ03
+
+               IF cl_null(g_occ02) OR g_occ02 = "" THEN
+                  LET g_occ02 = l_occ03
+               ELSE
+                  LET g_occ02 = g_occ02 CLIPPED, "|", l_occ03
+               END IF
+
+            END FOREACH
+
+            DISPLAY g_occ02 TO occ02}
 ###########################            end        #############################
 
             ON ACTION qbe_select                           #查詢提供條件選擇，選擇後直接帶入畫面 
@@ -402,8 +443,8 @@ FUNCTION t033_i()
          CASE
             WHEN INFIELD(tc_jgd23)
                CALL cl_init_qry_var()
-               LET g_qryparam.state = 'c'
-               LET g_qryparam.form = "cq_occ"
+               #LET g_qryparam.state = 'c'
+               LET g_qryparam.form = "q_occ"
                CALL cl_create_qry() RETURNING g_qryparam.multiret
 
                LET tc_jgd23 = g_qryparam.multiret
@@ -422,7 +463,7 @@ FUNCTION t033_i()
          SELECT occ02 INTO g_occ02 FROM occ_file WHERE occ01 = tc_jgd23
 
          IF SQLCA.SQLCODE != 0 THEN
-            CALL cl_err("tc_jgd23","客户不存在",0)
+            CALL cl_err("tc_jgd23",'cxmt033',0)
             LET g_occ02 = ""
             DISPLAY g_occ02 TO occ02
             NEXT FIELD tc_jgd23
