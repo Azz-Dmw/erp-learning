@@ -648,6 +648,37 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
             END IF
 
          AFTER FIELD tc_jgc02
+            # ====== add by dmw20260506 ===== 新增逻辑：同产品编号带出最近转换汇率 =====
+            #只有新增时才自动带出报价汇率
+            IF p_cmd = 'a' THEN
+
+               SELECT tc_jgc11
+               INTO l_tc_jgc11
+               FROM tc_jgc_file
+               WHERE tc_jgc02 = g_tc_jgc[l_ac].tc_jgc02
+               AND tc_jgc01 = g_tc_jgc01
+               AND tc_jgcacti = 'Y'
+               AND tc_jgc06 = (
+                     SELECT MAX(tc_jgc06)
+                     FROM tc_jgc_file
+                     WHERE tc_jgc02 = g_tc_jgc[l_ac].tc_jgc02
+                     AND tc_jgc01 = g_tc_jgc01
+                     AND tc_jgcacti = 'Y'
+                  )
+
+               IF SQLCA.sqlcode = 0 THEN
+                  IF NOT cl_null(g_tc_jgc[l_ac].tc_jgc02) THEN
+
+                     LET g_tc_jgc[l_ac].tc_jgc10 = l_tc_jgc11
+
+                     DISPLAY BY NAME g_tc_jgc[l_ac].tc_jgc10
+
+                  END IF
+               END IF
+
+            END IF
+            # ====== add by dmw20260506 ===== 新增逻辑：同产品编号带出最近转换汇率 =====
+
             IF NOT cl_null(g_tc_jgc[l_ac].tc_jgc02) THEN
             SELECT COUNT(*) INTO g_cnt FROM tc_jgc_file 
                WHERE tc_jgc01 = g_tc_jgc01 AND tc_jgc02 = g_tc_jgc[l_ac].tc_jgc02 AND tc_jgc06 = g_tc_jgc[l_ac].tc_jgc06 AND tc_jgc09 = g_tc_jgc[l_ac].tc_jgc09  
@@ -666,25 +697,7 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
             END IF
             END IF 
 
-            # ====== add by dmw20260506 ===== 新增逻辑：同产品编号带出最近转换汇率 =====
-               SELECT tc_jgc11
-               INTO l_tc_jgc11
-               FROM tc_jgc_file
-               WHERE tc_jgc02 = g_tc_jgc[l_ac].tc_jgc02
-               AND tc_jgc01 = g_tc_jgc01
-               AND tc_jgcacti = 'Y'
-               AND tc_jgc06 = (
-                     SELECT MAX(tc_jgc06)
-                     FROM tc_jgc_file
-                     WHERE tc_jgc02 = g_tc_jgc[l_ac].tc_jgc02
-                        AND tc_jgc01 = g_tc_jgc01
-                        AND tc_jgcacti = 'Y'
-                  )
 
-               IF SQLCA.sqlcode = 0 THEN
-                  LET g_tc_jgc[l_ac].tc_jgc10 = l_tc_jgc11
-                  DISPLAY BY NAME g_tc_jgc[l_ac].tc_jgc10
-               END IF
 
          AFTER FIELD tc_jgc06
             SELECT COUNT(*) INTO g_cnt FROM tc_jgc_file 
