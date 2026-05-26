@@ -983,6 +983,10 @@ DEFINE p_wc   STRING   #MOD-8B0084
       LET p_wc = " AND ", p_wc CLIPPED
    END IF
 
+      IF cl_null(p_wc) OR p_wc == "" THEN
+      LET p_wc = " 1=1 ", p_wc CLIPPED
+   END IF
+
    DISPLAY "i032_b_fill(p_wc) 中的p_wc值为：",p_wc
  
     # Modify.........: By dmw20260427 新增报价汇率和转换汇率栏位
