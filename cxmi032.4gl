@@ -652,7 +652,7 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
             #只有新增时才自动带出报价汇率
             IF p_cmd = 'a' THEN
 
-               SELECT tc_jgc11
+               SELECT MAX(tc_jgc11)
                INTO l_tc_jgc11
                FROM tc_jgc_file
                WHERE tc_jgc02 = g_tc_jgc[l_ac].tc_jgc02
