@@ -652,7 +652,7 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
             #只有新增时才自动带出报价汇率
             IF p_cmd = 'a' THEN
 
-               SELECT MAX(tc_jgc11)
+               SELECT tc_jgc11
                INTO l_tc_jgc11
                FROM tc_jgc_file
                WHERE tc_jgc02 = g_tc_jgc[l_ac].tc_jgc02
@@ -665,6 +665,7 @@ DEFINE l_tc_jgc11 LIKE tc_jgc_file.tc_jgc11
                      AND tc_jgc01 = g_tc_jgc01
                      AND tc_jgcacti = 'Y'
                   )
+               AND ROWNUM = 1
 
                IF SQLCA.sqlcode = 0 THEN
                   IF NOT cl_null(g_tc_jgc[l_ac].tc_jgc02) THEN
