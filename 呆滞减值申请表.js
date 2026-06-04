@@ -329,11 +329,11 @@ function fromERP_onclick(){
         /* ✅ 减值金额 */
         "(NVL(CCC23,0) * NVL(tc_jcz12,0)) * " +
         "CASE tc_jcz16 " +
-        "WHEN '34' THEN 0.3 " +
-        "WHEN '36' THEN 0.6 " +
-        "WHEN '37' THEN 0.6 " +
-        "WHEN '33' THEN 0.9 " +
-        "WHEN '41' THEN 0.9 " +
+        "WHEN '34' THEN 30% " +
+        "WHEN '36' THEN 60% " +
+        "WHEN '37' THEN 60% " +
+        "WHEN '33' THEN 90% " +
+        "WHEN '41' THEN 90% " +
         "ELSE 0 END AS imp, " +
         "CASE tc_jcz16 " +
         "WHEN '33' THEN '33:转仓-呆滞品仓，损耗多出，后续订单冲销' " +
