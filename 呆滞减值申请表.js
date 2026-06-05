@@ -320,20 +320,20 @@ function fromERP_onclick(){
         "NVL(CCC23,0) * NVL(tc_jcz12,0) AS cost, " +
         /* ✅ 减值比例 */
         "CASE tc_jcz16 " +
+        "WHEN '34' THEN '30%' " +
+        "WHEN '36' THEN '60%' " +
+        "WHEN '37' THEN '60%' " +
+        "WHEN '33' THEN '90%' " +
+        "WHEN '41' THEN '90%' " +
+        "ELSE '0%' END AS rate, " +
+        /* ✅ 减值金额 */
+        "(NVL(CCC23,0) * NVL(tc_jcz12,0)) * " +
+        "CASE tc_jcz16 " +
         "WHEN '34' THEN 0.3 " +
         "WHEN '36' THEN 0.6 " +
         "WHEN '37' THEN 0.6 " +
         "WHEN '33' THEN 0.9 " +
         "WHEN '41' THEN 0.9 " +
-        "ELSE 0 END AS rate, " +
-        /* ✅ 减值金额 */
-        "(NVL(CCC23,0) * NVL(tc_jcz12,0)) * " +
-        "CASE tc_jcz16 " +
-        "WHEN '34' THEN 30% " +
-        "WHEN '36' THEN 60% " +
-        "WHEN '37' THEN 60% " +
-        "WHEN '33' THEN 90% " +
-        "WHEN '41' THEN 90% " +
         "ELSE 0 END AS imp, " +
         "CASE tc_jcz16 " +
         "WHEN '33' THEN '33:转仓-呆滞品仓，损耗多出，后续订单冲销' " +
@@ -401,6 +401,12 @@ function checkPointOnClose(pReturnId) {
                 + tData[i][14] + "','" // 业务处理方案
                 + "'],";               // 备注先空白
     }
+
+    // 可逐条打印详细内容
+    tData.forEach((row, index) => {
+        console.log("第 " + index + " 行：", row);
+    });
+
     str = str.substring(0, str.length - 1);
     str += "]";
     if(str=="]"){
