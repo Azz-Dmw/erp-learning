@@ -260,6 +260,8 @@ function deriveButton_onclick() {
 // ===============================
 function formDispatch() {
 
+    var tDs = new DataSource(formId,"sqlJFERP");
+
     console.log("派送函数formDispatch已触发，activityId =", activityId);
 
     if (activityId != "UserTask_61") {
@@ -279,25 +281,73 @@ function formDispatch() {
 
         var r = gData[i];
 
+        // =========================
+        // 安全取值函数
+        function safeNum(v) {
+            var n = Number(v);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function safeStr(v) {
+            return (v === undefined || v === null) ? "" : String(v);
+        }
+        // =========================
+
+
+        //------成本价从ERP(axct100)中获取的--------
+        var costPrice = 0;
+
+        var sql =
+            "SELECT CCC23 FROM CCC_FILE " +
+            "WHERE CCC01 = '" + safeStr(r[2]) + "' " +
+            "AND CCC02 = TO_NUMBER(TO_CHAR(ADD_MONTHS(SYSDATE,-1),'YYYY')) " +
+            "AND CCC03 = TO_NUMBER(TO_CHAR(ADD_MONTHS(SYSDATE,-1),'MM'))";
+
+        console.log("ERP查询SQL为:",sql);
+
+        var rs = tDs.query(sql);
+
+        if (rs && rs.length > 0 && rs[0] && rs[0][0] != null) {
+            costPrice = safeNum(rs[0][0]);
+        }
+
+        //------成本价从ERP中获取的--------
+
+        // 数量（r[5] 是数量，按你实际字段调整）
+        var qty = safeNum(r[5]);
+
+        // 成本金额 = 数量 × 成本价
+        var costAmount = qty * costPrice;
+        if (isNaN(costAmount)) costAmount = 0;
+
+        // 呆滞原因（r[8] 是原因）
+        var reason = r[8];
+
+        //减值比例
+        var rate = safeNum(getRate(reason));
+        // 用于显示（百分比%）
+        var rateDisplay = (rate * 100) + "%";
+
+        // 减值金额 = 成本金额 × 减值比例
+        var impairmentAmount = costAmount * rate;
+
         gridXML +=
             '<record id="grid_score_' + i + '">' +
-                "<item id='txtF01' dataType='java.lang.String' perDataProId=''>" + (r[0] || "") + "</item>" +
-                "<item id='txtF02' dataType='java.lang.String' perDataProId=''>" + (r[1] || "") + "</item>" +
-                "<item id='txtF03' dataType='java.lang.String' perDataProId=''>" + (r[2] || "") + "</item>" +
-                "<item id='txtF04' dataType='java.lang.String' perDataProId=''>" + (r[3] || "") + "</item>" +
-                "<item id='txtF05_txt' dataType='java.util.Date' perDataProId=''>" + (r[4] || "") + "</item>" +
-                "<item id='txtF06' dataType='java.lang.String' perDataProId=''>" + (r[5] || "") + "</item>" +
-                "<item id='txtF07' dataType='java.lang.String' perDataProId=''>" + (r[6] || "") + "</item>" +
-                "<item id='txtF08' dataType='java.lang.String' perDataProId=''>" + (r[7] || "") + "</item>" +
-                "<item id='txtF09' dataType='java.lang.String' perDataProId=''>" + (r[8] || "") + "</item>" +
-                "<item id='txtF10' dataType='java.lang.String' perDataProId=''>" + (r[9] || "") + "</item>" +
-                "<item id='txtF11' dataType='java.lang.String' perDataProId=''>" + (1 || "") + "</item>" +
-                "<item id='txtF12' dataType='java.lang.String' perDataProId=''>" + (2 || "") + "</item>" +
-                "<item id='txtF13' dataType='java.lang.String' perDataProId=''>" + (3 || "") + "</item>" +
-                "<item id='txtF14' dataType='java.lang.String' perDataProId=''>" + (4 || "") + "</item>" +
-                "<item id='txtF15' dataType='java.lang.String' perDataProId=''>" + (5 || "") + "</item>" +
-                "<item id='txtF16' dataType='java.lang.String' perDataProId=''>" + (2026 || "") + "</item>" +
-                "<item id='txtF17' dataType='java.lang.String' perDataProId=''>" + (6 || "") + "</item>" +
+                "<item id='txtF01' dataType='java.lang.String' perDataProId=''>" + safeStr(r[0]) + "</item>" +   //库位
+                "<item id='txtF02' dataType='java.lang.String' perDataProId=''>" + safeStr(r[1]) + "</item>" +   //客户
+                "<item id='txtF03' dataType='java.lang.String' perDataProId=''>" + safeStr(r[2]) + "</item>" +   //物料编码
+                "<item id='txtF04' dataType='java.lang.String' perDataProId=''>" + safeStr(r[3]) + "</item>" +   //物料名称
+                "<item id='txtF05_txt' dataType='java.util.Date' perDataProId=''>" + safeStr(r[4]) + "</item>" + //入库日期
+                "<item id='txtF06' dataType='java.lang.String' perDataProId=''>" + qty + "</item>" +   //数量
+                "<item id='txtF07' dataType='java.lang.String' perDataProId=''>" + safeStr(r[6]) + "</item>" +   //呆滞天数
+                "<item id='txtF08' dataType='java.lang.String' perDataProId=''>" + safeStr(r[7]) + "</item>" +   //重量
+                "<item id='txtF09' dataType='java.lang.String' perDataProId=''>" + costPrice + "</item>" +   //成本价
+                "<item id='txtF10' dataType='java.lang.String' perDataProId=''>" + costAmount + "</item>" +   //成本金额
+                "<item id='txtF11' dataType='java.lang.String' perDataProId=''>" + rateDisplay + "</item>" +      //减值比例
+                "<item id='txtF12' dataType='java.lang.String' perDataProId=''>" + impairmentAmount + "</item>" +      //减值金额
+                "<item id='txtF13' dataType='java.lang.String' perDataProId=''>" + safeStr(r[8]) + "</item>" +   //呆滞原因
+                "<item id='txtF14' dataType='java.lang.String' perDataProId=''>" + safeStr(r[9]) + "</item>" +   //业务处理方案
+                "<item id='txtF15' dataType='java.lang.String' perDataProId=''>" + safeStr(r[10]) + "</item>" +  //备注
             '</record>';
     }
 
@@ -341,8 +391,8 @@ var formXML =
 
     console.log("XML生成完成:",formXML);
 
-    var formId = "OA124";
-    var processId = "oaJFInvImpairReq";
+    var formId = "OA124";   //呆滞减值申请单表单号
+    var processId = "oaJFInvImpairReq"; //呆滞减值申请单流程id
     var gid = dliAprDep_txt.value;
 
     DWREngine.setAsync(false);
@@ -378,4 +428,45 @@ var formXML =
     grid_scoreObj.reload(gData);
 
     return true;
+}
+
+//减值比例计算方法
+/* 
+具体呆滞原因比例如下：
+    1排程延后按30%，
+    2.备料按60%，
+    3.客人取消订单按60%，
+    4.耗损多出按90%，
+    5.其他原因按90%
+*/
+function getRate(reason) {
+
+    // 防空
+    if (!reason) return 0.9;
+
+    // 如果你的 r[8] 可能是“33:xxx”这种
+    var code = String(reason).split(":")[0]; 
+
+    switch (code) {
+
+        // 排程延后 30%
+        case "34":
+            return 0.3;
+
+        // 备料 60%
+        case "36":
+        case "37":
+            return 0.6;
+
+        // 耗损多出 90%
+        case "33":
+            return 0.9;
+
+        // 客供品仓 / 已立帐 / 其他情况
+        case "41":
+            return 0.9;
+
+        default:
+            return 0.9;
+    }
 }
